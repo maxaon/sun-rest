@@ -1,0 +1,20 @@
+{
+  "name"           : "sun-rest",
+  "version"        : "0.0.1",
+  "main"           : [
+    "src/config.js",
+    "src/manager.js",
+    "src/model.js",
+    "src/repository.js",
+    "src/route.js"
+  ],
+  "dependencies"   : {
+    "angular"         : "~1",
+    "angular-resource": "~1",
+    "lodash"          : "~2"
+  },
+  "devDependencies": {
+    "angular-mocks"   : "~1",
+    "angular-scenario": "~1"
+  }
+}
