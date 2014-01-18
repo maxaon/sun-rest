@@ -9,7 +9,7 @@
     })
     .controller('DemoController', function ($scope, RestRepository) {
       $scope.devices = "fdf";
-      var repo = RestRepository({
+      var repo = RestRepository.create({
         name      : 'User',
         route     : "/controllers/:id",
         properties: {

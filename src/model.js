@@ -8,34 +8,11 @@
    * @name sun.rest.model
    *
    */
-  angular.module('sun.rest.model', [
-      'sun.rest.manager'
-    ])
-    .factory("ModelFactory", function (ModelManager)
-    /**
-     * @param {ModelManager} ModelManager
-     */ {
-      function inherit(child, parent) {
-        if (!child) {
-          child = function (data) {
-            child.super.constructor.call(this, data);
-          };
-        }
-        var F = function () {
-        };
-        F.prototype = parent.prototype;
-
-
-        child.prototype = new F();
-        child.prototype.constructor = child;
-        child.prototype.super = parent.prototype;
-        for (var prop in parent)
-          child[prop] = parent[prop];
-        return child;
-      }
+  angular.module('sun.rest.model', [ 'sun.rest.manager', 'sun.utils' ])
+    .factory('modelFactory', function (sunUtils, ModelManager) {
 
       var BaseModel = function (data) {
-        this.mngr = new ModelManager(this.schema, this.constructor);
+        this.mngr = new this.constructor.mngrClass(this);
         this.mngr.model = this;
         if (!_.isEmpty(data)) {
           this.mngr.populate(data);
@@ -49,27 +26,31 @@
         var keys = this.mngr.schema.route.match(/:\w[\w0-9-_]*/g);
         params = params || {};
         params[keys[keys.length - 1]] = id;
-        return this.mngr.objectRequest("GET", false, params);
+        return this.mngr.objectRequest('GET', false, params);
       };
       BaseModel.query = function (params) {
-        return this.mngr.objectRequest("GET", true, params);
+        return this.mngr.objectRequest('GET', true, params);
       };
       BaseModel.fetch = BaseModel.query;
 
 
+      function DefaultChild(data) {
+        //noinspection JSLint,JSUnresolvedVariable
+        this.super.constructor.call(this, data);
+      }
+
       /**
-       * Name ModelFactory
+       * Name modelFactory
        * @param schema
        * @returns {*}
        * @constructor
        */
-      function ModelFactory(schema) {
+      function modelFactory(schema) {
         var Model, modelProperties = {}, mngr;
-        Model = inherit(schema.inherit, BaseModel);
 
-
+        Model = sunUtils.inherit(schema.inherit || DefaultChild, BaseModel);
         _.forEach(schema.properties, function (value, key) {
-          modelProperties["_" + key] = {
+          modelProperties['_' + key] = {
             get: function () {
               return this['__' + key];
             },
@@ -106,22 +87,15 @@
           };
         });
         Object.defineProperties(Model.prototype, modelProperties);
-        Model.prototype.schema = schema;
 
-        mngr = new ModelManager(schema, Model);
-        if ('mngr' in Model) {
-          for (var prop in Model.mngr) {
-            //noinspection JSUnfilteredForInLoop
-            mngr[prop] = Model.mngr[prop];
-          }
-        }
-        Model.mngr = mngr;
+        Model.mngrClass = ModelManager.create(schema, Model, Model.mngr);
+
         return Model;
       }
 
-      ModelFactory.BaseModel = BaseModel;
+      modelFactory.BaseModel = BaseModel;
 
-      return ModelFactory;
+      return modelFactory;
     })
 
 }(angular));
