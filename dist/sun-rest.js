@@ -1,10 +1,9 @@
-/*! maxaon's sun.rest module*/
+/*! sun-rest v0.0.3 by maxaon*/
 (function (angular) {
   'use strict';
   var module;
-
   angular.module('sun.rest.config', []).provider('RestConfig', function () {
-    var requestFormatter, strictMode = false,
+    var strictMode = false,
       baseUrl = '',
       responseDataLocation = '',
       modelIdProperty = 'id',
@@ -12,8 +11,7 @@
       flattenItemRoute = false,
       validateOnSync = true,
       isArray = null,
-      properties;
-    requestFormatter = function () {};
+      propertyModifier, requestFormatter, properties;
     properties = {
       strictMode: {
         get: function () {
@@ -92,17 +90,25 @@
         set: function (value) {
           isArray = value;
         }
+      },
+      propertyModifier: {
+        get: function () {
+          return propertyModifier;
+        },
+        set: function (value) {
+          propertyModifier = value;
+        }
       }
     };
     Object.defineProperties(this, properties);
     this.$get = function () {
-      var a = {};
-      Object.defineProperties(a, _.mapValues(properties, function (param) {
+      var service = {};
+      Object.defineProperties(service, _.mapValues(properties, function (param) {
         return {
           get: param.get
         };
       }));
-      return a;
+      return service;
     };
   });
 
@@ -166,7 +172,12 @@
       ModelManager.prototype.NORMALIZE_INCOMING = 'incoming';
       ModelManager.prototype.NORMALIZE_OUTGOING = 'outgoing';
       ModelManager.prototype.populate = function (data) {
+        var properties = this.schema.properties;
+        data = this.normalizeData(data, this.NORMALIZE_INCOMING);
         angular.forEach(data, function (value, key) {
+          if (properties[key] && properties[key].toNative) {
+            value = properties[key].toNative(value);
+          }
           this['__' + key] = value;
         }, this.model);
         this.remoteFlag = true;
@@ -180,11 +191,15 @@
         this.remoteFlag = saveRemoteFlag;
       };
       ModelManager.prototype.toJSON = function () {
-        var returnData = {};
-        _.forEach(this.schema.properties, function (value, key) {
-          returnData[key] = this.model['_' + key];
+        var returnData = {}, value;
+        _.forEach(this.schema.properties, function (property, key) {
+          value = this.model['_' + key];
+          if (property.toJson) {
+            value = property.toJson(value);
+          }
+          returnData[key] = value;
         }, this);
-        return returnData;
+        return this.normalizeData(returnData, this.NORMALIZE_OUTGOING);
       };
       ModelManager.prototype.normalizeData = function (data, way) {
         var normalizedData = {}, isOutgoing = way === this.NORMALIZE_OUTGOING;
@@ -268,9 +283,6 @@
           params[this.schema.idProperty] = data[this.schema.idProperty];
         }
         this.route.buildConfig(httpConfig, angular.extend({}, this.extractParams(data), params));
-        if (params.data) {
-          params.data = this.normalizeData(params.data, this.NORMALIZE_OUTGOING);
-        }
         promise = $http(httpConfig);
         if (angular.isDefined(path)) {
           promise = promise.then(function (response) {
@@ -488,6 +500,7 @@
       };
 
       function Schema(properties) {
+        this.properties = {};
         angular.extend(this, {
           name: null,
           route: null,
@@ -503,11 +516,22 @@
           flattenItemRoute: RestConfig.flattenItemRoute,
           modal: {},
           inherit: null,
-          paramDefaults: {}
+          paramDefaults: {},
+          propertyModifier: RestConfig.propertyModifier
         }, properties);
         if (!this.routeIdProperty) {
           var keys = this.route.match(/:\w[\w0-9-_]*/g);
           this.routeIdProperty = keys[keys.length - 1].slice(1);
+        }
+        if (this.propertyModifier) {
+          var modifier = this.propertyModifier,
+            newProperty;
+          _.forEach(this.properties, function (property, name) {
+            newProperty = modifier(property, name);
+            if (newProperty) {
+              this[name] = newProperty;
+            }
+          }, this.properties);
         }
       }
       return {

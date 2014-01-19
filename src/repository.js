@@ -97,6 +97,7 @@
        * @name Schema
        */
       function Schema(properties) {
+        this.properties = {};
         angular.extend(this, {
           name            : null,
           route           : null,
@@ -112,11 +113,21 @@
           flattenItemRoute: RestConfig.flattenItemRoute,
           modal           : {},
           inherit         : null,
-          paramDefaults   : {}
+          paramDefaults   : {},
+          propertyModifier: RestConfig.propertyModifier
         }, properties);
         if (!this.routeIdProperty) {
           var keys = this.route.match(/:\w[\w0-9-_]*/g);
           this.routeIdProperty = keys[keys.length - 1].slice(1);
+        }
+        if (this.propertyModifier) {
+          var modifier = this.propertyModifier, newProperty;
+          _.forEach(this.properties, function (property, name) {
+            newProperty = modifier(property, name);
+            if (newProperty) {
+              this[name] = newProperty;
+            }
+          }, this.properties);
         }
       }
 

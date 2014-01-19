@@ -1,10 +1,10 @@
 /**
  * Created by maxaon on 16.01.14.
  */
-describe('Router test', function () {
+describe('Router buildConfig test', function () {
   'use strict';
-  beforeEach(module('sun.rest.router'));
   var Router;
+  beforeEach(module('sun.rest.router'));
   beforeEach(inject(function (_Router_) {
     Router = _Router_;
   }));
@@ -13,9 +13,7 @@ describe('Router test', function () {
       router = new Router('/controllers/:id');
 
     function call(params, actionUrl) {
-      var config = {};
-      router.buildConfig(config, params, actionUrl);
-      return config;
+      return router.buildConfig({}, params, actionUrl);
     }
 
     expect(call().url).toBe('/controllers');
@@ -24,8 +22,8 @@ describe('Router test', function () {
     expect(call({id: 12, url: 'action'}).url).toBe('/controllers/12/action');
     expect(call({id: 12}, 'action').url).toBe('/controllers/12/action');
 
-    config = call({id: 12, filter_by: 'name'}, 'action');
+    config = call({id: 12, filterBy: 'name'}, 'action');
     expect(config.url).toBe('/controllers/12/action');
-    expect(config.params.filter_by).toBe('name');
+    expect(config.params.filterBy).toBe('name');
   });
 });

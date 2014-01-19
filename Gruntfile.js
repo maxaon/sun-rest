@@ -25,8 +25,10 @@ module.exports = function (grunt) {
       app : 'src',
       dist: 'dist',
       src : ['utils.js', 'config.js', 'router.js', 'manager.js', 'model.js', 'repository.js']
-
     },
+    // Bower configuration
+    bwr            : grunt.file.readJSON('bower.json'),
+    baseBanner     : '/*! <%= bwr.name %> v<%= bwr.version%> by maxaon*/',
 
     // Watches files for changes and runs tasks based on the changed files
     watch          : {
@@ -251,7 +253,8 @@ module.exports = function (grunt) {
     // },
     uglify         : {
       options: {
-        sourceMap: '<%= yeoman.dist %>/sun-rest.min.js.map'
+        sourceMap: '<%= yeoman.dist %>/sun-rest.min.js.map',
+        banner   : '<%= baseBanner %>'
       },
       dist   : {
 
@@ -269,10 +272,12 @@ module.exports = function (grunt) {
           return src.replace(/[\s\S]*\(function \(\S*\) {\s*['"]use strict['"]\;*([\s\S]*)}\(angular\)\)\;/, '$1')
             .replace(/\s*var\smodule/, '  module');
         },
-        banner      : '/*! maxaon\'s sun.rest module*/\n' +
-          '(function (angular) {\n' +
-          '  \'use strict\';\n' +
-          '  var module;\n',
+        banner      : [
+          '<%= baseBanner %>' ,
+          '(function (angular) {' ,
+          '  \'use strict\';' ,
+          '  var module;'
+        ].join('\n'),
         footer      : '}(angular));'
       },
       dist   : {

@@ -6,8 +6,7 @@
   'use strict';
   angular.module('sun.rest.config', [ ])
     .provider('RestConfig', function () {
-      var requestFormatter,
-        strictMode = false,
+      var strictMode = false,
         baseUrl = '',
         responseDataLocation = '',
         modelIdProperty = 'id',
@@ -15,9 +14,9 @@
         flattenItemRoute = false,
         validateOnSync = true,
         isArray = null,
+        propertyModifier,
+        requestFormatter,
         properties;
-      requestFormatter = function () {
-      };
       properties = {
         strictMode          : {
           get: function () {
@@ -95,6 +94,14 @@
           },
           set: function (value) {
             isArray = value;
+          }
+        },
+        propertyModifier    : {
+          get: function () {
+            return propertyModifier;
+          },
+          set: function (value) {
+            propertyModifier = value;
           }
         }
       };

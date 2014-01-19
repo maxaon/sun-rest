@@ -116,9 +116,9 @@
           }
         });
         return config;
-
       }
     };
+
     return Router;
   });
 

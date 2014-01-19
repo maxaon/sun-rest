@@ -7,12 +7,10 @@ describe('Test BaseModel creation', function () {
   // load the controller's module
   beforeEach(module('sun.rest.model'));
 
-  var BaseModel,
-    modelFactory;
+  var modelFactory;
 
   beforeEach(inject(function (_modelFactory_) {
     modelFactory = _modelFactory_;
-    BaseModel = modelFactory.BaseModel;
   }));
 
   it('should create simple model', function () {
@@ -50,6 +48,14 @@ describe('Test BaseModel creation', function () {
     expect(inst._choices).toBe(2);
     expect(inst.choices).toBe('not one');
   });
+  it('should correctly convert to JSON', function () {
+    var inst, Model;
+    Model = modelFactory({properties: {login: {}, password: {}}});
+    inst = new Model();
+    inst.login = 'login';
+    inst.password = 'password';
+    expect(JSON.stringify(inst)).toBe(JSON.stringify({login: 'login', password: 'password'}));
+  });
   it('should serialize model', function () {
     var inst, NewModel;
     NewModel = modelFactory({
@@ -67,5 +73,35 @@ describe('Test BaseModel creation', function () {
     inst.choices = 10;
     expect(JSON.stringify(inst)).toBe(JSON.stringify({choices: 10}));
   });
+  it('should call custom modifications', function () {
+    var inst, NewModel;
+    NewModel = modelFactory({
+      properties: {
+        password: {
+          toJson  : function (value) {
+            return 'JSON:' + value;
+          },
+          toNative: function (value) {
+            return 'NATIVE:' + value;
+          }
+        },
+        date    : {
+          toJson  : function (value) {
+            return value.toJSON();
+          },
+          toNative: function (value) {
+            return new Date(value);
+          }
+        }
+      }
+    });
+    inst = new NewModel();
+    inst.mngr.populate({password: 'psw', date: '2014-01-01T20:10:00.000Z'});
+    expect(inst.password).toBe('NATIVE:psw');
+    expect(inst.mngr.toJSON().password).toBe('JSON:NATIVE:psw');
+    expect(inst.date).toBeInstanceOf(Date);
+    expect(inst.date - new Date(Date.UTC(2014, 0, 1, 20, 10))).toBe(0);
 
+
+  });
 });

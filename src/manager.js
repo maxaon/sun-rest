@@ -67,12 +67,17 @@
     ModelManager.prototype.DIRTY = 'dirty';
     ModelManager.prototype.LOADED = 'loaded';
 
-    //noinspection JSUnusedGlobalSymbols
     ModelManager.prototype.NORMALIZE_INCOMING = 'incoming';
     ModelManager.prototype.NORMALIZE_OUTGOING = 'outgoing';
 
     ModelManager.prototype.populate = function (data) {
+      var properties = this.schema.properties;
+      data = this.normalizeData(data, this.NORMALIZE_INCOMING);
+
       angular.forEach(data, function (value, key) {
+        if (properties[key] && properties[key].toNative) {
+          value = properties[key].toNative(value);
+        }
         this['__' + key] = value;
       }, this.model);
       this.remoteFlag = true;
@@ -86,11 +91,15 @@
       this.remoteFlag = saveRemoteFlag;
     };
     ModelManager.prototype.toJSON = function () {
-      var returnData = {};
-      _.forEach(this.schema.properties, function (value, key) {
-        returnData[key] = this.model['_' + key];
+      var returnData = {}, value;
+      _.forEach(this.schema.properties, function (property, key) {
+        value = this.model['_' + key];
+        if (property.toJson) {
+          value = property.toJson(value);
+        }
+        returnData[key] = value;
       }, this);
-      return returnData;
+      return this.normalizeData(returnData, this.NORMALIZE_OUTGOING);
     };
     ModelManager.prototype.normalizeData = function (data, way) {
       var normalizedData = {},
@@ -196,18 +205,13 @@
       this.route.buildConfig(httpConfig,
         angular.extend({}, this.extractParams(data), params));
 
-      if (params.data) {
-        params.data = this.normalizeData(params.data, this.NORMALIZE_OUTGOING);
-      }
       promise = $http(httpConfig);
       if (angular.isDefined(path)) {
         promise = promise.then(function (response) {
           return sunUtils.stringJsonParser(path, response.data);
-
         });
       }
       return promise;
-
     };
     Object.defineProperties(ModelManager.prototype, {
       state: {
