@@ -10,7 +10,8 @@
     'sun.rest.model',
     'sun.rest.router'
   ]);
-  module.factory('RestRepository', function ($q, $http, sunUtils, RestConfig, modelFactory, Router)
+
+  module.factory('RestRepository',
     /**
      * @name RestRepository
      * @param RestConfig
@@ -19,7 +20,10 @@
      * @constructor
      * @param $http
      * @param Router
-     */ {
+     * @param $q
+     * @param sunUtils
+     */
+      function ($q, $http, sunUtils, RestConfig, modelFactory, Router) {
       var RestResource = function (schema) {
         this.schema = schema;
         this.router = new Router(schema.route);
@@ -27,7 +31,8 @@
 
       };
       RestResource.prototype.find = function (params, postData) {
-        var id,
+        var promise,
+          id,
           httpConfig,
           value,
           dataLocation,
@@ -40,7 +45,7 @@
           params = {};
           params[this.schema.routeIdProperty] = id;
         }
-        if (_.isObject(params) && (this.schema.routeIdProperty in params)) {
+        if (_.isObject(params) && (params[this.schema.routeIdProperty])) {
           isArray = false;
         }
 
@@ -51,7 +56,7 @@
         this.router.buildConfig(httpConfig, params);
 
         //noinspection UnnecessaryLocalVariableJS
-        var promise = $http(httpConfig)
+        promise = $http(httpConfig)
           .then(function (response) {
             var extracted,
               data = response.data,
@@ -89,9 +94,12 @@
 
 
       };
-      var Schema = function (properties) {
+      /**
+       * @name Schema
+       */
+      function Schema(properties) {
         angular.extend(this, {
-          name            : name,
+          name            : null,
           route           : null,
           idProperty      : RestConfig.getModelIdProperty(),
           routeIdProperty : null,
@@ -111,7 +119,7 @@
           var keys = this.route.match(/:\w[\w0-9-_]*/g);
           this.routeIdProperty = keys[keys.length - 1].slice(1);
         }
-      };
+      }
 
       return {
         resources: {},
@@ -132,6 +140,5 @@
         }
       };
 
-    }
-  );
+    });
 }(angular));

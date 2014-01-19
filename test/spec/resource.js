@@ -81,7 +81,7 @@ describe('Rest creation', function () {
         obj.mngr.save();
         $httpBackend.flush();
       });
-      it('should make teo responses', function () {
+      it('should make two responses', function () {
         $httpBackend.expect('GET', '/controllers').respond([model()]);
         var objs = repo.find();
         $httpBackend.flush();
@@ -95,12 +95,15 @@ describe('Rest creation', function () {
         $httpBackend.expect('GET', '/controllers/12').respond(model());
         var obj = repo.find(12);
         $httpBackend.flush();
+        expect(obj.mngr.state).toBe(obj.mngr.LOADED);
         obj.title = 'New title';
+        expect(obj.mngr.state).toBe(obj.mngr.DIRTY);
         $httpBackend
           .expect('PUT', '/controllers/12', model({title: 'New title'}))
           .respond(model({title: 'ServerSideTitle'}));
         obj.mngr.save();
         $httpBackend.flush();
+        expect(obj.mngr.state).toBe(obj.mngr.LOADED);
         expect(obj.title).toBe('ServerSideTitle');
       });
     });
@@ -118,7 +121,7 @@ describe('Rest custom creation', function () {
     var obj, repo, ControllerModel;
     ControllerModel = function (data) {
       //noinspection JSLint
-      this.super.constructor.call(this, data);
+      this.$super.constructor.call(this, data);
     };
     ControllerModel.prototype.testFunction = function () {
       return this._title;
@@ -140,7 +143,7 @@ describe('Rest custom creation', function () {
     var obj, repo, ControllerModel;
     ControllerModel = function (data) {
       //noinspection JSLint
-      this.super.constructor.call(this, data);
+      this.$super.constructor.call(this, data);
     };
     ControllerModel.mngr = {
       managerMethod: function () {

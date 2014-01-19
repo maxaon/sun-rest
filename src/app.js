@@ -5,13 +5,13 @@
   'use strict';
   angular.module('app', ['sun.rest'])
     .config(function (RestConfigProvider) {
-      RestConfigProvider.setBaseUrl("http://127.0.0.1:8000/")
+      RestConfigProvider.setBaseUrl('http://127.0.0.1:8000/');
     })
     .controller('DemoController', function ($scope, RestRepository) {
-      $scope.devices = "fdf";
-      var repo = RestRepository.create({
+      var repo, model;
+      repo = RestRepository.create({
         name      : 'User',
-        route     : "/controllers/:id",
+        route     : '/controllers/:id',
         properties: {
           title      : {},
           description: {},
@@ -19,9 +19,9 @@
           id         : {}
         }
       });
-      var model = $scope.model = repo.find(12);
-      $scope.savem = function () {
-        model.title = "New title";
+      model = $scope.model = repo.find(12);
+      $scope.save = function () {
+        model.title = 'New title';
         model.mngr.save();
       };
 

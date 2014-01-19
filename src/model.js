@@ -13,7 +13,6 @@
 
       var BaseModel = function (data) {
         this.mngr = new this.constructor.mngrClass(this);
-        this.mngr.model = this;
         if (!_.isEmpty(data)) {
           this.mngr.populate(data);
         }
@@ -36,7 +35,7 @@
 
       function DefaultChild(data) {
         //noinspection JSLint,JSUnresolvedVariable
-        this.super.constructor.call(this, data);
+        this.$super.constructor.call(this, data);
       }
 
       /**
@@ -46,40 +45,57 @@
        * @constructor
        */
       function modelFactory(schema) {
-        var Model, modelProperties = {}, mngr;
+        var Model, modelProperties = {};
 
         Model = sunUtils.inherit(schema.inherit || DefaultChild, BaseModel);
         _.forEach(schema.properties, function (value, key) {
+          var customSetter = false, customGetter = false, customProperty = false,
+            defaultGetMethod, defaultSetMethod;
+          if (Model.prototype[key]) {
+            customGetter = customSetter = customProperty = true;
+          } else {
+            customGetter = !!schema.properties[key].getter;
+            customSetter = !!schema.properties[key].setter;
+          }
           modelProperties['_' + key] = {
             get: function () {
               return this['__' + key];
             },
             set: function (value) {
+              if (value !== this['__' + key]) {
+                if (value === this.mngr.originalData[key]) {
+                  delete this.mngr.changedProperties[key];
+                  this.mngr.modifyFlag = Object.keys(this.mngr.changedProperties).length > 0;
+                } else {
+                  this.mngr.changedProperties[key] = true;
+                  this.mngr.modifyFlag = true;
+                }
+              }
               this['__' + key] = value;
             }
           };
-          if (key in Model.prototype) {
+          if (customProperty) {
             return;
           }
-          var defaultGetMethod, defaultSetMethod;
-          defaultGetMethod = function () {
-            var value = !_.isUndefined(this['_' + key]) ? this['_' + key] : undefined;
 
-            //see if we need to apply any custom getter logic
-            if (schema.properties[key].getter) {
-              value = schema.properties[key].getter.apply(this, [value]);
-            }
-
-            return value;
-          };
-          defaultSetMethod = function (value) {
-            //see if we need to apply any custom setter logic
-            if (schema.properties[key].setter) {
-              value = schema.properties[key].setter.apply(this, [value]);
-            }
-
-            this['_' + key] = value;
-          };
+          if (customGetter) {
+            defaultGetMethod = function () {
+              return schema.properties[key].getter.call(this, this['_' + key]);
+            };
+          } else {
+            defaultGetMethod = function () {
+              return this['_' + key];
+            };
+          }
+          if (customSetter) {
+            defaultSetMethod = function (value) {
+              this['_' + key] = schema.properties[key].setter.call(this, value);
+            };
+          } else {
+            defaultSetMethod = function (value) {
+              this['_' + key] = value;
+            };
+          }
 
           modelProperties[key] = {
             get: defaultGetMethod,
@@ -96,6 +112,6 @@
       modelFactory.BaseModel = BaseModel;
 
       return modelFactory;
-    })
+    });
 
 }(angular));

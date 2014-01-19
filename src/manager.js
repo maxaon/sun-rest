@@ -36,7 +36,9 @@
     //endregion
     /**
      * @name ModelManager
-     * @param {object} schema Schema of the model
+     * @param {Schema} schema Schema of the model
+     * @param model
+     * @param modelClass
      * @constructor
      */
     function ModelManager(model, schema, modelClass) {
@@ -44,12 +46,14 @@
         this.schema = schema;
       }
       if (modelClass) {
-        this.modelClass = modelClass
+        this.modelClass = modelClass;
       }
       this.remoteFlag = false;
+      this.modifyFlag = false;
       this.model = model;
 
       this.originalData = {};
+      this.changedProperties = {};
       this.deleteFlag = false;
       this.route = new Router(this.schema.route);
     }
@@ -68,10 +72,14 @@
         this['__' + key] = value;
       }, this.model);
       this.remoteFlag = true;
+      this.modifyFlag = false;
+      this.changedProperties = {};
       this.originalData = data;
     };
     ModelManager.prototype.reset = function () {
-      throw new Error('Not implemented');
+      var saveRemoteFlag = this.remoteFlag;
+      this.populate(this.originalData);
+      this.remoteFlag = saveRemoteFlag;
     };
     ModelManager.prototype.toJSON = function () {
       var returnData = {};
@@ -113,7 +121,7 @@
         method = isNew ? 'POST' : RestConfig.getUpdateMethod();
       params = angular.extend({}, this.schema.paramDefaults[isNew ? 'create' : 'update'], params);
 
-      promise = this.simpleReques(method, params, this.model, this.schema.dataItemLocation);
+      promise = this.simpleRequest(method, params, this.model, this.schema.dataItemLocation);
       model = this.model;
       if (modifyLocal !== false) {
         promise = promise.then(function (obj) {
@@ -123,9 +131,9 @@
       }
       return promise;
     };
-    ModelManager.prototype.delete = function (params) {
-      params = angular.extend({}, this.schema.paramDefaults.delete, params);
-      return this.simpleReques('DELETE', params);
+    ModelManager.prototype.remove = function (params) {
+      params = angular.extend({}, this.schema.paramDefaults.remove, params);
+      return this.simpleRequest('DELETE', params);
     };
     ModelManager.prototype.objectRequest = function (method, isArray, params, data) {
       var promise,
@@ -133,7 +141,7 @@
         dataLocation = (isArray === true ? this.schema.dataListLocation : this.schema.dataItemLocation),
         value = isArray ? [] : (new Model(data));
 
-      promise = this.simpleReques(method, params, data)
+      promise = this.simpleRequest(method, params, data)
         .then(function (response) {
           var data, promise, extracted;
           data = response.data;
@@ -169,7 +177,7 @@
       return value;
 
     };
-    ModelManager.prototype.simpleReques = function (method, params, data, path) {
+    ModelManager.prototype.simpleRequest = function (method, params, data, path) {
       var promise,
         hasBody = (['POST', 'PUT', 'PATCH'].indexOf(method.toUpperCase()) > -1),
         httpConfig = {method: method};
@@ -201,19 +209,20 @@
     Object.defineProperties(ModelManager.prototype, {
       state: {
         get: function () {
+          /*jslint white:true*/
           var state;
-          if (this.remoteFlag === false) {
+
+          if (!this.remoteFlag) {
             state = this.NEW;
           }
-          else if (this.deleteFlag === true) {
+          else if (this.deleteFlag) {
             state = this.DELETED;
           }
-          // TODO: Add loaded and dirty check
-          else if (this.remoteFlag === true) {
-            state = this.LOADED;
+          else if (this.modifyFlag) {
+            state = this.DIRTY;
           }
           else {
-            state = this.DIRTY;
+            state = this.LOADED;
           }
           return state;
         }
@@ -233,7 +242,7 @@
         child = overrides;
       } else {
         child = function () {
-          this.super.constructor.apply(this, arguments);
+          this.$super.constructor.apply(this, arguments);
         };
         if (_.isObject(overrides)) {
           child.prototype = overrides;
