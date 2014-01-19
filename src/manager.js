@@ -118,7 +118,7 @@
     ModelManager.prototype.save = function (params, modifyLocal) {
       var model, promise,
         isNew = (this.state === this.NEW),
-        method = isNew ? 'POST' : RestConfig.getUpdateMethod();
+        method = isNew ? 'POST' : RestConfig.updateMethod;
       params = angular.extend({}, this.schema.paramDefaults[isNew ? 'create' : 'update'], params);
 
       promise = this.simpleRequest(method, params, this.model, this.schema.dataItemLocation);

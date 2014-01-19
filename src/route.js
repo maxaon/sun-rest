@@ -68,7 +68,7 @@
             url = actionUrl;
           }
 
-          url = RestConfig.getBaseUrl() + url;
+          url = RestConfig.baseUrl + url;
         }
 
 
