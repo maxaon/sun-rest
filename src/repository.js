@@ -10,7 +10,6 @@
     'sun.rest.model',
     'sun.rest.router'
   ]);
-
   module.factory('RestRepository',
     /**
      * @name RestRepository

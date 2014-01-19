@@ -1,12 +1,8 @@
 {
   "name"           : "sun-rest",
-  "version"        : "0.0.1",
+  "version"        : "0.0.2",
   "main"           : [
-    "src/config.js",
-    "src/manager.js",
-    "src/model.js",
-    "src/repository.js",
-    "src/route.js"
+    "dist/sun-rest.js"
   ],
   "dependencies"   : {
     "angular"         : "~1",

@@ -7,7 +7,7 @@
     .config(function (RestConfigProvider) {
       RestConfigProvider.setBaseUrl('http://127.0.0.1:8000/');
     })
-    .controller('DemoController', function ($scope, RestRepository) {
+    .controller('Democ', function ($scope, RestRepository) {
       var repo, model;
       repo = RestRepository.create({
         name      : 'User',

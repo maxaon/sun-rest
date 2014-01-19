@@ -6,17 +6,18 @@
   'use strict';
   angular.module('sun.rest.config', [ ])
     .provider('RestConfig', function () {
-      var strictMode = false,
+      var requestFormatter,
+        strictMode = false,
         baseUrl = '',
         responseDataLocation = '',
         modelIdProperty = 'id',
         updateMethod = 'PUT',
-        requestFormatter = function () {
-        },
         flattenItemRoute = false,
         validateOnSync = true,
         isArray = null,
         properties;
+      requestFormatter = function () {
+      };
       properties = {
         strictMode          : {
           get: function () {
@@ -31,8 +32,9 @@
             return baseUrl;
           },
           set: function (value) {
-            if (value.lastIndexOf("/") === (value.length - 1))
+            if (value.lastIndexOf('/') === (value.length - 1)) {
               value = value.slice(0, -1);
+            }
             baseUrl = value;
           }
         },
@@ -74,7 +76,7 @@
           },
           set: function (value) {
             if (!_.isFunction(value)) {
-              throw new Error("Request formatter must be a function");
+              throw new Error('Request formatter must be a function');
             }
             requestFormatter = value;
           }
@@ -97,13 +99,13 @@
         }
       };
       Object.defineProperties(this, properties);
+      //noinspection JSPotentiallyInvalidUsageOfThis
       this.$get = function () {
-        var a = {};
-        Object.defineProperties(a, _.mapValues(properties, function (param) {
+        var service = {};
+        Object.defineProperties(service, _.mapValues(properties, function (param) {
           return {get: param.get};
         }));
-        return a;
+        return service;
       };
-
     });
 }(angular));

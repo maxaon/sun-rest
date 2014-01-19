@@ -4,10 +4,11 @@ module.exports = function (config) {
   'use strict';
   sharedConfig(config);
   config.set({
-    files: config.files.concat([
-      'src/**/*.js',
+    files    : config.files.concat([
+      'dist/sun-rest.min.js',
       'test/mock/**/*.js',
       'test/spec/**/*.js'
-    ])
+    ]),
+    singleRun: true
   });
 };

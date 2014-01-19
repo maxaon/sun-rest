@@ -15,6 +15,10 @@
     //region Dotted path
     var MEMBER_NAME_REGEX = /^(\.[a-zA-Z_$][0-9a-zA-Z_$]*)+$/;
 
+    function hasBody(method) {
+      return (['POST', 'PUT', 'PATCH']).indexOf(method.toUpperCase()) > -1;
+    }
+
     function isValidDottedPath(path) {
       return (path !== null && path !== '' && path !== 'hasOwnProperty' &&
         MEMBER_NAME_REGEX.test('.' + path));
@@ -93,7 +97,7 @@
         isOutgoing = (way === this.NORMALIZE_OUTGOING);
 
       _.forEach(this.schema.properties, function (prop, name) {
-        var remoteProperty = (!_.isUndefined(prop.remoteProperty) && !_.isNull(prop.remoteProperty) ? prop.remoteProperty : name),
+        var remoteProperty = (prop.remoteProperty ? prop.remoteProperty : name),
           normalizedKey = (isOutgoing ? remoteProperty : name),
           noneNormalizedKey = (isOutgoing ? name : remoteProperty);
 
@@ -179,10 +183,9 @@
     };
     ModelManager.prototype.simpleRequest = function (method, params, data, path) {
       var promise,
-        hasBody = (['POST', 'PUT', 'PATCH'].indexOf(method.toUpperCase()) > -1),
         httpConfig = {method: method};
 //        var url = this.schema.route;
-      if (hasBody) {
+      if (hasBody(method)) {
         httpConfig.data = data;
       }
       params = params || {};

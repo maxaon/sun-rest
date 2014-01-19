@@ -16,13 +16,16 @@ module.exports = function (grunt) {
   require('time-grunt')(grunt);
 
   // Define the configuration for all the tasks
+  //noinspection JSUnusedGlobalSymbols
   grunt.initConfig({
 
     // Project settings
     yeoman         : {
       // configurable paths
       app : 'src',
-      dist: 'dist'
+      dist: 'dist',
+      src : ['utils.js', 'config.js', 'router.js', 'manager.js', 'model.js', 'repository.js']
+
     },
 
     // Watches files for changes and runs tasks based on the changed files
@@ -149,38 +152,24 @@ module.exports = function (grunt) {
     },
 
 
-    // Renames files for browser caching purposes
-    rev            : {
-      dist: {
-        files: {
-          src: [
-            '<%= yeoman.dist %>/scripts/{,*/}*.js',
-            '<%= yeoman.dist %>/styles/{,*/}*.css',
-            '<%= yeoman.dist %>/images/{,*/}*.{png,jpg,jpeg,gif,webp,svg}',
-            '<%= yeoman.dist %>/styles/fonts/*'
-          ]
-        }
-      }
-    },
-
     // Reads HTML for usemin blocks to enable smart builds that automatically
     // concat, minify and revision files. Creates configurations in memory so
     // additional tasks can operate on them
-    useminPrepare  : {
-      html   : '<%= yeoman.app %>/index.html',
-      options: {
-        dest: '<%= yeoman.dist %>'
-      }
-    },
+//    useminPrepare  : {
+//      html   : '<%= yeoman.app %>/index.html',
+//      options: {
+//        dest: '<%= yeoman.dist %>'
+//      }
+//    },
 
     // Performs rewrites based on rev and the useminPrepare configuration
-    usemin         : {
-      html   : ['<%= yeoman.dist %>/{,*/}*.html'],
-      css    : ['<%= yeoman.dist %>/styles/{,*/}*.css'],
-      options: {
-        assetsDirs: ['<%= yeoman.dist %>']
-      }
-    },
+//    usemin         : {
+//      html   : ['<%= yeoman.dist %>/{,*/}*.html'],
+//      css    : ['<%= yeoman.dist %>/styles/{,*/}*.css'],
+//      options: {
+//        assetsDirs: ['<%= yeoman.dist %>']
+//      }
+//    },
 
     // Allow the use of non-minsafe AngularJS files. Automatically makes it
     // minsafe compatible so Uglify does not destroy the ng references
@@ -189,15 +178,15 @@ module.exports = function (grunt) {
         files: [
           {
             expand: true,
-            cwd   : '.tmp/concat/scripts',
-            src   : '*.js',
+            cwd   : '<%= yeoman.app %>',
+            src   : '<%= yeoman.src %>',
             dest  : '.tmp/concat/scripts'
           }
         ]
       }
     },
 
-   // Copies remaining files to places other tasks can use
+    // Copies remaining files to places other tasks can use
     copy           : {
       dist  : {
         files: [
@@ -241,9 +230,9 @@ module.exports = function (grunt) {
         'copy:styles'
       ],
       dist  : [
-        'copy:styles',
-        'imagemin',
-        'svgmin'
+        'copy:styles'
+//        'imagemin',
+//        'svgmin'
       ]
     },
 
@@ -260,23 +249,56 @@ module.exports = function (grunt) {
     //     }
     //   }
     // },
-    // uglify: {
-    //   dist: {
-    //     files: {
-    //       '<%= yeoman.dist %>/scripts/scripts.js': [
-    //         '<%= yeoman.dist %>/scripts/scripts.js'
-    //       ]
-    //     }
-    //   }
-    // },
-    // concat: {
-    //   dist: {}
-    // },
+    uglify         : {
+      options: {
+        sourceMap: '<%= yeoman.dist %>/sun-rest.min.js.map'
+      },
+      dist   : {
 
-    // Test settings
+        files: {
+          '<%= yeoman.dist %>/sun-rest.min.js': [
+            '<%= yeoman.dist %>/sun-rest.js'
+          ]
+        }
+      }
+    },
+    concat         : {
+      options: {
+        stripBanners: true,
+        process     : function (src) {
+          return src.replace(/[\s\S]*\(function \(\S*\) {\s*['"]use strict['"]\;*([\s\S]*)}\(angular\)\)\;/, '$1')
+            .replace(/\s*var\smodule/, '  module');
+        },
+        banner      : '/*! maxaon\'s sun.rest module*/\n' +
+          '(function (angular) {\n' +
+          '  \'use strict\';\n' +
+          '  var module;\n',
+        footer      : '}(angular));'
+      },
+      dist   : {
+        src : '.tmp/concat/scripts/**/*.js',
+        dest: 'dist/sun-rest.js'
+      }
+    },
+    jsbeautifier   : {
+      options: {
+        js: {
+          indentSize : 2,
+          jslintHappy: true
+        }
+      },
+      dist   : {
+        src: 'dist/sun-rest.js'
+      }
+    },
+// Test settings
     karma          : {
-      unit: {
+      unit     : {
         configFile: 'karma.conf.js',
+        singleRun : true
+      },
+      minimized: {
+        configFile: 'karma-minimized.conf.js',
         singleRun : true
       }
     }
@@ -285,7 +307,8 @@ module.exports = function (grunt) {
 
   grunt.registerTask('serve', function (target) {
     if (target === 'dist') {
-      return grunt.task.run(['build', 'connect:dist:keepalive']);
+      grunt.task.run(['build', 'connect:dist:keepalive']);
+      return;
     }
 
     grunt.task.run([
@@ -308,29 +331,19 @@ module.exports = function (grunt) {
     'concurrent:test',
     'autoprefixer',
     'connect:test',
-    'karma'
+    'karma:unit'
   ]);
 
   grunt.registerTask('build', [
     'clean:dist',
-    'bower-install',
-    'useminPrepare',
-    'concurrent:dist',
-    'autoprefixer',
-    'concat',
     'ngmin',
-    'copy:dist',
-    'cdnify',
-    'cssmin',
+    'concat:dist',
+    'jsbeautifier:dist',
     'uglify',
-    'rev',
-    'usemin',
-    'htmlmin'
+    'clean:server',
+    'karma:minimized'
   ]);
 
-  grunt.registerTask('default', [
-    'newer:jshint',
-    'test',
-    'build'
-  ]);
+  grunt.registerTask('default', ['build']);
 };
+
