@@ -5,6 +5,7 @@ module.exports = function (config) {
   sharedConfig(config);
   config.set({
     files: config.files.concat([
+      'src/sun-rest.js',
       'src/**/*.js',
       'test/mock/**/*.js',
       'test/spec/**/*.js'

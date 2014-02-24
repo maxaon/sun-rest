@@ -13,7 +13,7 @@
       isArray = null,
       propertyModifier, requestFormatter, properties;
     properties = {
-      strictMode: {
+      strictMode          : {
         get: function () {
           return strictMode;
         },
@@ -21,7 +21,7 @@
           strictMode = value;
         }
       },
-      baseUrl: {
+      baseUrl             : {
         get: function () {
           return baseUrl;
         },
@@ -40,7 +40,7 @@
           responseDataLocation = value;
         }
       },
-      modelIdProperty: {
+      modelIdProperty     : {
         get: function () {
           return modelIdProperty;
         },
@@ -48,7 +48,7 @@
           modelIdProperty = value;
         }
       },
-      updateMethod: {
+      updateMethod        : {
         get: function () {
           return updateMethod;
         },
@@ -56,7 +56,7 @@
           updateMethod = value;
         }
       },
-      flattenItemRoute: {
+      flattenItemRoute    : {
         get: function () {
           return flattenItemRoute;
         },
@@ -64,7 +64,7 @@
           flattenItemRoute = value;
         }
       },
-      requestFormatter: {
+      requestFormatter    : {
         get: function () {
           return requestFormatter;
         },
@@ -75,7 +75,7 @@
           requestFormatter = value;
         }
       },
-      validateOnSync: {
+      validateOnSync      : {
         get: function () {
           return validateOnSync;
         },
@@ -83,7 +83,7 @@
           validateOnSync = value;
         }
       },
-      isArray: {
+      isArray             : {
         get: function () {
           return isArray;
         },
@@ -91,7 +91,7 @@
           isArray = value;
         }
       },
-      propertyModifier: {
+      propertyModifier    : {
         get: function () {
           return propertyModifier;
         },
@@ -117,7 +117,7 @@
     'sun.rest.config',
     'sun.rest.router'
   ]);
-  module.factory('ModelManager', [
+  module.factory('sunRestModelManager', [
     '$http',
     '$q',
     'sunUtils',
@@ -165,6 +165,7 @@
         this.deleteFlag = false;
         this.route = new Router(this.schema.route);
       }
+
       ModelManager.prototype.NEW = 'new';
       ModelManager.prototype.DELETED = 'deleted';
       ModelManager.prototype.DIRTY = 'dirty';
@@ -273,8 +274,8 @@
       };
       ModelManager.prototype.simpleRequest = function (method, params, data, path) {
         var promise, httpConfig = {
-            method: method
-          };
+          method: method
+        };
         if (hasBody(method)) {
           httpConfig.data = data;
         }
@@ -292,7 +293,7 @@
         return promise;
       };
       Object.defineProperties(ModelManager.prototype, {
-        state: {
+        state   : {
           get: function () {
             var state;
             if (!this.remoteFlag) {
@@ -338,9 +339,9 @@
     'sun.rest.manager',
     'sun.utils'
   ]);
-  module.factory('modelFactory', [
+  module.factory('sunRestModelFactory', [
     'sunUtils',
-    'ModelManager',
+    'sunRestModelManager',
     function (sunUtils, ModelManager) {
       var BaseModel = function (data) {
         this.mngr = new this.constructor.mngrClass(this);
@@ -378,8 +379,8 @@
           if (Model.prototype[key]) {
             customGetter = customSetter = customProperty = true;
           } else {
-            customGetter = !! schema.properties[key].getter;
-            customSetter = !! schema.properties[key].setter;
+            customGetter = !!schema.properties[key].getter;
+            customSetter = !!schema.properties[key].setter;
           }
           modelProperties['_' + key] = {
             get: function () {
@@ -428,6 +429,7 @@
         Model.mngrClass = ModelManager.create(schema, Model, Model.mngr);
         return Model;
       }
+
       modelFactory.BaseModel = BaseModel;
       return modelFactory;
     }
@@ -444,7 +446,7 @@
     '$http',
     'sunUtils',
     'RestConfig',
-    'modelFactory',
+    'sunRestModelFactory',
     'Router',
     function ($q, $http, sunUtils, RestConfig, modelFactory, Router) {
       var RestResource = function (schema) {
@@ -469,7 +471,7 @@
         value = isArray ? [] : new Model();
         httpConfig = {
           method: method,
-          data: postData
+          data  : postData
         };
         this.router.buildConfig(httpConfig, params);
         promise = $http(httpConfig).then(function (response) {
@@ -502,21 +504,21 @@
       function Schema(properties) {
         this.properties = {};
         angular.extend(this, {
-          name: null,
-          route: null,
-          idProperty: RestConfig.modelIdProperty,
-          routeIdProperty: null,
-          properties: {},
-          relations: {},
+          name            : null,
+          route           : null,
+          idProperty      : RestConfig.modelIdProperty,
+          routeIdProperty : null,
+          properties      : {},
+          relations       : {},
           dataListLocation: RestConfig.responseDataLocation,
           dataItemLocation: RestConfig.responseDataLocation,
-          autoParse: true,
+          autoParse       : true,
           requestFormatter: RestConfig.requestFormatter,
-          isArray: RestConfig.isArray,
+          isArray         : RestConfig.isArray,
           flattenItemRoute: RestConfig.flattenItemRoute,
-          modal: {},
-          inherit: null,
-          paramDefaults: {},
+          modal           : {},
+          inherit         : null,
+          paramDefaults   : {},
           propertyModifier: RestConfig.propertyModifier
         }, properties);
         if (!this.routeIdProperty) {
@@ -534,9 +536,10 @@
           }, this.properties);
         }
       }
+
       return {
         resources: {},
-        create: function (name, schema) {
+        create   : function (name, schema) {
           if (!schema) {
             if (!_.isObject(name)) {
               throw new Error('Wrong repository call format');
@@ -548,7 +551,7 @@
           this.resources[name] = new RestResource(schema);
           return this.resources[name];
         },
-        get: function (name) {
+        get      : function (name) {
           return this.resources[name];
         }
       };
@@ -572,6 +575,7 @@
         this.defaults = defaults || {};
         this.urlParams = {};
       }
+
       Router.prototype = {
         buildConfig: function (config, params, actionUrl) {
           params = params || {};
@@ -644,7 +648,8 @@
     };
     this.inherit = function (Child, Parent) {
       var F, f;
-      F = function () {};
+      F = function () {
+      };
       F.prototype = Parent.prototype;
       f = new F();
       this.copyProperties(Child.prototype, f, ['constructor']);

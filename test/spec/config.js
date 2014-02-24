@@ -3,25 +3,25 @@
  */
 describe('Rest Config', function () {
   'use strict';
-  beforeEach(module('sun.rest.config'));
+  beforeEach(module('sun.rest'));
 
   it('should change baseUrl', function () {
-    module(function (RestConfigProvider) {
-      RestConfigProvider.baseUrl = '/api/';
+    module(function (sunRestConfigProvider) {
+      sunRestConfigProvider.baseUrl = '/api/';
     });
-    inject(function (RestConfig) {
-      expect(RestConfig.baseUrl).toBe('/api');
+    inject(function (sunRestConfig) {
+      expect(sunRestConfig.baseUrl).toBe('/api');
       expect(function () {
-        RestConfig.baseUrl = 'Bla';
+        sunRestConfig.baseUrl = 'Bla';
       }).toThrow();
     });
   });
   it('should change absolute baseUrl', function () {
-    module(function (RestConfigProvider) {
-      RestConfigProvider.baseUrl = 'http://api.example.com:1209/api/';
+    module(function (sunRestConfigProvider) {
+      sunRestConfigProvider.baseUrl = 'http://api.example.com:1209/api/';
     });
-    inject(function (RestConfig) {
-      expect(RestConfig.baseUrl).toBe('http://api.example.com:1209/api');
+    inject(function (sunRestConfig) {
+      expect(sunRestConfig.baseUrl).toBe('http://api.example.com:1209/api');
     });
   });
 });

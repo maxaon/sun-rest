@@ -55,6 +55,11 @@ module.exports = function (grunt) {
           '.tmp/styles/{,*/}*.css',
           '<%= yeoman.app %>/images/{,*/}*.{png,jpg,jpeg,gif,webp,svg}'
         ]
+      },
+      docs      : {
+        files  : 'src/**/*.js',
+        tasks  : 'ngdocs',
+        verbose: true
       }
     },
 
@@ -296,7 +301,7 @@ module.exports = function (grunt) {
         src: 'dist/sun-rest.js'
       }
     },
-// Test settings
+    // Test settings
     karma          : {
       unit     : {
         configFile: 'karma.conf.js',
@@ -306,6 +311,16 @@ module.exports = function (grunt) {
         configFile: 'karma-minimized.conf.js',
         singleRun : true
       }
+    },
+
+    // Documentation generator
+    ngdocs         : {
+      options: {
+        dest     : 'docs',
+        html5Mode: false,
+        scripts  : ['angular.js']
+      },
+      all    : ['src/**/*.js']
     }
   });
 

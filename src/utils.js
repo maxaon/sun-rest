@@ -1,6 +1,3 @@
-/**
- * Created by root on 1/19/14.
- */
 (function (angular) {
   'use strict';
   /**

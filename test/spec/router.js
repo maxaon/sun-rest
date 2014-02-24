@@ -4,7 +4,7 @@
 describe('Router buildConfig test', function () {
   'use strict';
   var Router;
-  beforeEach(module('sun.rest.router'));
+  beforeEach(module('sun.rest'));
   beforeEach(inject(function (_Router_) {
     Router = _Router_;
   }));

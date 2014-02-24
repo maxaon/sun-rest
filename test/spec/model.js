@@ -5,7 +5,7 @@
 describe('Test BaseModel creation', function () {
   'use strict';
   // load the controller's module
-  beforeEach(module('sun.rest.model'));
+  beforeEach(module('sun.rest'));
 
   var modelFactory;
 
