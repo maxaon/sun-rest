@@ -188,11 +188,11 @@ describe('Repository creation with configuration', function () {
   'use strict';
   beforeEach(module('sun.rest'));
   it('should work with other baseUrl', function () {
-    module(function (RestConfigProvider) {
-      RestConfigProvider.baseUrl = 'http://api.example.com:1209/api/';
+    module(function (sunRestConfigProvider) {
+      sunRestConfigProvider.baseUrl = 'http://api.example.com:1209/api/';
     });
-    inject(function (RestRepository, $httpBackend) {
-      var obj, repo = RestRepository.create(userSchema());
+    inject(function (sunRestRepository, $httpBackend) {
+      var obj, repo = sunRestRepository.create(userSchema());
       $httpBackend.expect('GET', 'http://api.example.com:1209/api/controllers/12').respond(model());
       obj = repo.find(12);
       $httpBackend.flush();

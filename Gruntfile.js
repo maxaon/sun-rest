@@ -186,10 +186,9 @@ module.exports = function (grunt) {
       dist: {
         files: [
           {
-            expand: true,
-            cwd   : '<%= yeoman.app %>',
-            src   : '<%= yeoman.src %>',
-            dest  : '.tmp/concat/scripts'
+//            expand: true,
+            src : '.tmp/concatenated.js',
+            dest: 'dist/sun-rest.js'
           }
         ]
       }
@@ -289,14 +288,14 @@ module.exports = function (grunt) {
       },
       dist   : {
         src : (function () {
-          var cwd = '.tmp/concat/scripts/';
+          var cwd = 'src/';
           var arr = SRC;
           // determine file order here and concat to arr
           return arr.map(function (file) {
             return cwd + file;
           });
         }()),
-        dest: 'dist/sun-rest.js'
+        dest: '.tmp/concatenated.js'
       }
     },
     jsbeautifier   : {
@@ -365,13 +364,13 @@ module.exports = function (grunt) {
 
   grunt.registerTask('build', [
     'clean:dist',
-    'ngmin',
     'concat:dist',
+    'ngmin',
     'jsbeautifier:dist',
     'uglify',
     'clean:server',
-    'karma:minimized'
-
+    'karma:minimized',
+    'ngdocs'
   ]);
 
   grunt.registerTask('default', ['build']);

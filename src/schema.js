@@ -109,8 +109,8 @@ sunRest.factory('sunRestSchema',
 
     };
 
-    sunRestSchema.prototype.wrappedResponseInterceptor = function (bind, response) {
-      var result = this.responseInterceptor && this.responseInterceptor.call(bind, response);
+    sunRestSchema.prototype.wrappedResponseInterceptor = function (bind, response, path) {
+      var result = this.responseInterceptor && this.responseInterceptor.call(bind, response, path);
       if (!result) {
         return $q.when(response);
       }

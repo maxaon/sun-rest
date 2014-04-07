@@ -22,7 +22,7 @@ sunRest.factory('sunRestBaseModel', function () {
   };
   return BaseModel;
 });
-sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestConfig, sunRestRouter, sunRestSchema) {
+sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestConfig, sunRestRouter) {
   //region Dotted path
   var MEMBER_NAME_REGEX = /^(\.[a-zA-Z_$][0-9a-zA-Z_$]*)+$/;
 
@@ -128,6 +128,9 @@ sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestCon
   sunRestModelManager.prototype.normalizeData = function (data, way) {
     var normalizedData = {},
       isOutgoing = (way === this.NORMALIZE_OUTGOING);
+    if (!data) {
+      return {};
+    }
 
     _.forEach(this.schema.properties, function (prop, name) {
       var remoteProperty = (prop.remoteProperty ? prop.remoteProperty : name),
@@ -232,7 +235,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestCon
       .then(function (newConfig) {
         return $http(newConfig);
       }).then(function (response) {
-        return schema.wrappedResponseInterceptor(response, path)
+        return schema.wrappedResponseInterceptor(this, response, path)
       });
     if (angular.isDefined(path)) {
       promise = promise.then(function (response) {
