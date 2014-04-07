@@ -1,7 +1,51 @@
 /*! sun-rest v0.0.3 by maxaon*/
 (function (angular) {
   'use strict';
-  var module;
+  'use strict';
+  /**
+   * @name sun.utils
+   */
+  angular.module('sun.utils', []).service('sunUtils', function sunUtils() {
+    this.copyProperties = function (from, to, exclude) {
+      var i, props, prop, description;
+      exclude = exclude || [];
+      props = Object.getOwnPropertyNames(from);
+      for (i = 0; i < props.length; i++) {
+        prop = props[i];
+        description = Object.getOwnPropertyDescriptor(from, prop);
+        if (exclude.indexOf(prop) === -1) {
+          Object.defineProperty(to, prop, description);
+        }
+      }
+    };
+    this.inherit = function (Child, Parent) {
+      var F, f;
+      F = function () {};
+      F.prototype = Parent.prototype;
+      f = new F();
+      this.copyProperties(Child.prototype, f, ['constructor']);
+      Child.prototype = f;
+      Child.prototype.constructor = Child;
+      Child.prototype.$super = Parent.prototype;
+      return Child;
+    };
+    this.stringJsonParser = function (stringPath, object) {
+      var parts, x, returnValue = object;
+      if (stringPath.length > 0) {
+        returnValue = object;
+        parts = stringPath.split('.');
+        for (x = 0; x < parts.length; x += 1) {
+          returnValue = _.isObject(returnValue) ? returnValue[parts[x]] : undefined;
+        }
+      }
+      return returnValue;
+    };
+  });
+  'use strict';
+  /**
+   * @name sunRest
+   */
+  var sunRest = angular.module('sun.rest', ['sun.utils']);
   'use strict';
   /* global sunRest */
   /**
@@ -149,6 +193,228 @@
   });
   'use strict';
   /* global sunRest */
+  sunRest.factory('sunRestSchema', function ($q, sunUtils, sunRestConfig) {
+    /**
+     * @ngdoc object
+     * @name sunRest.sunRestSchema:PropertyDescription
+     * @typedef {object} PropertyDescription
+     * @property {function} setter Function to set value
+     * @property {function} getter Function to get value
+     * @property {string} remoteProperty Name of the remote property
+     */
+    /**
+     * @ngdoc service
+     * @name sunRest.sunRestSchema
+     * @typedef {object} sunRestSchema
+     * @constructor
+     * @param {object} properties Properties of the schema
+     *
+     * @property {string}  name
+     * @property {string}  route
+     * @property {string}  idProperty
+     * @property {string}  routeIdProperty
+     * @property {PropertyDescription[]}  properties
+     * @property {object}  relations
+     * @property {string}  dataListLocation
+     * @property {string}  dataItemLocation
+     * @property {boolean}  autoParse
+     * @property {function}  requestInterceptor
+     * @property {function}  responseInterceptor
+     * @property {boolean}  isArray
+     * @property {object}  paramDefaults
+     * @property {function}  propertyModifier
+     * @property {function}  dataExtractor
+     */
+    function sunRestSchema(properties) {
+      angular.extend(this, this.defaultProperties, properties);
+      if (!this.routeIdProperty) {
+        this.routeIdProperty = this.extractRouteIdProperty(this.route);
+      }
+      if (this.propertyModifier) {
+        this.applyPropertyModifier(this.properties, this.propertyModifier);
+      }
+    }
+    /**
+     * @name sunRest.sunRestSchema.defaultProperties
+     * @memberOf sunRest.sunRestSchema
+     * @methodOf sunRest.sunRestSchema
+     */
+    sunRestSchema.prototype.defaultProperties = {
+      name: null,
+      route: null,
+      idProperty: sunRestConfig.modelIdProperty,
+      routeIdProperty: null,
+      properties: {},
+      relations: {},
+      dataListLocation: sunRestConfig.responseDataLocation,
+      dataItemLocation: sunRestConfig.responseDataLocation,
+      autoParse: true,
+      requestInterceptor: sunRestConfig.requestInterceptor,
+      responseInterceptor: sunRestConfig.responseInterceptor,
+      isArray: sunRestConfig.isArray,
+      paramDefaults: {},
+      propertyModifier: sunRestConfig.propertyModifier,
+      dataExtractor: sunRestConfig.dataExtractor
+    };
+    /**
+     * @name sunRest.sunRestSchema.extractRouteIdProperty
+     * @memberOf sunRest.sunRestSchema
+     * @methodOf sunRest.sunRestSchema
+     */
+    sunRestSchema.prototype.extractRouteIdProperty = function (route) {
+      var keys = route.match(/:\w[\w0-9-_]*/g);
+      if (keys.length === 0) {
+        return null;
+      }
+      return keys[keys.length - 1].slice(1);
+    };
+    /**
+     * @name sunRest.sunRestSchema.applyPropertyModifier
+     * @memberOf sunRest.sunRestSchema
+     * @methodOf sunRest.sunRestSchema
+     */
+    sunRestSchema.prototype.applyPropertyModifier = function (properties, modifier) {
+      var newProperty;
+      _.forEach(properties, function (property, name) {
+        newProperty = modifier(property, name);
+        if (newProperty !== undefined) {
+          properties[name] = newProperty;
+        }
+      });
+    };
+    sunRestSchema.prototype.wrappedRequestInterceptor = function (bind, httpConfig) {
+      return function () {
+        var result = this.requestInterceptor && this.requestInterceptor.call(bind, httpConfig);
+        if (!result) {
+          return $q.when(httpConfig);
+        } else {
+          return $q.when(result);
+        }
+      };
+    };
+    sunRestSchema.prototype.wrappedResponseInterceptor = function (bind, response) {
+      return function () {
+        var result = this.responseInterceptor && this.responseInterceptor.call(bind, response);
+        if (!result) {
+          return $q.when(response);
+        } else {
+          return $q.when(result);
+        }
+      };
+    };
+    sunRestSchema.defaultDataExtractor = function (path, response) {
+      return sunUtils.stringJsonParser(path, response.data);
+    };
+    Object.defineProperties(sunRestSchema.prototype, {
+      'dataExtractor': {
+        get: function () {
+          return this._dataExtractor || sunRestSchema.defaultDataExtractor;
+        },
+        set: function (value) {
+          this._dataExtractor = value;
+        }
+      }
+    });
+    return sunRestSchema;
+  });
+  'use strict';
+  /* global sunRest */
+  sunRest.factory('sunRestRouter', function (sunRestConfig) {
+    /**
+     * This method is intended for encoding *key* or *value* parts of query component. We need a
+     * custom method because encodeURIComponent is too aggressive and encodes stuff that doesn't
+     * have to be encoded per http://tools.ietf.org/html/rfc3986:
+     *    query       = *( pchar / '/' / '?' )
+     *    pchar         = unreserved / pct-encoded / sub-delims / ':' / '@'
+     *    unreserved    = ALPHA / DIGIT / '-' / '.' / '_' / '~'
+     *    pct-encoded   = '%' HEXDIG HEXDIG
+     *    sub-delims    = '!' / '$' / '&' / ''' / '(' / ')'
+     *                     / '*' / '+' / ',' / ';' / '='
+     */
+    function encodeUriQuery(val, pctEncodeSpaces) {
+      return encodeURIComponent(val).replace(/%40/gi, '@').replace(/%3A/gi, ':').replace(/%24/g, '$').replace(/%2C/gi, ',').replace(/%20/g, pctEncodeSpaces ? '%20' : '+');
+    }
+    /**
+     * We need our custom method because encodeURIComponent is too aggressive and doesn't follow
+     * http://www.ietf.org/rfc/rfc3986.txt with regards to the character set (pchar) allowed in path
+     * segments:
+     *    segment       = *pchar
+     *    pchar         = unreserved / pct-encoded / sub-delims / ':' / '@'
+     *    pct-encoded   = '%' HEXDIG HEXDIG
+     *    unreserved    = ALPHA / DIGIT / '-' / '.' / '_' / '~'
+     *    sub-delims    = '!' / '$' / '&' / ''' / '(' / ')'
+     *                     / '*' / '+' / ',' / ';' / '='
+     */
+    function encodeUriSegment(val) {
+      return encodeUriQuery(val, true).replace(/%26/gi, '&').replace(/%3D/gi, '=').replace(/%2B/gi, '+');
+    }
+
+    function sunRestRouter(template, defaults) {
+      this.template = template;
+      this.defaults = defaults || {};
+      this.urlParams = {};
+    }
+    sunRestRouter.prototype = {
+      buildConfig: function (config, params, actionUrl) {
+        params = params || {};
+        actionUrl = actionUrl || params.url;
+        delete params.url;
+        var url, val, encodedVal, urlParams = {};
+        if (actionUrl && actionUrl.indexOf('^') === 0) {
+          url = actionUrl.slice(1);
+        } else {
+          url = this.template;
+          if (actionUrl && actionUrl.indexOf('/') !== 0) {
+            url = this.template + '/' + actionUrl;
+          } else if (actionUrl) {
+            url = actionUrl;
+          }
+          url = sunRestConfig.baseUrl + url;
+        }
+        angular.forEach(url.split(/\W/), function (param) {
+          if (param === 'hasOwnProperty') {
+            throw new Error('hasOwnProperty is not a valid parameter name.');
+          }
+          if (!new RegExp('^\\d+$').test(param) && param && new RegExp('(^|[^\\\\]):' + param + '(\\W|$)').test(url)) {
+            urlParams[param] = true;
+          }
+        });
+        params = params || {};
+        angular.forEach(urlParams, function (_, urlParam) {
+          val = params.hasOwnProperty(urlParam) ? params[urlParam] : this.defaults[urlParam];
+          if (angular.isDefined(val) && val !== null) {
+            encodedVal = encodeUriSegment(val);
+            url = url.replace(new RegExp(':' + urlParam + '(\\W|$)', 'g'), encodedVal + '$1');
+          } else {
+            url = url.replace(new RegExp('(/?):' + urlParam + '(\\W|$)', 'g'), function (match, leadingSlashes, tail) {
+              if (tail.charAt(0) === '/') {
+                return tail;
+              }
+              return leadingSlashes + tail;
+            });
+          }
+        }, this);
+        // strip trailing slashes and set the url
+        url = url.replace(/\/+$/, '') || '/';
+        // then replace collapse `/.` if found in the last URL path segment before the query
+        // E.g. `http://url.com/id./format?q=x` becomes `http://url.com/id.format?q=x`
+        url = url.replace(/\/\.(?=\w+($|\?))/, '.');
+        // replace escaped `/\.` with `/.`
+        config.url = url.replace(/\/\\\./, '/.');
+        // set params - delegate param encoding to $http
+        angular.forEach(params, function (value, key) {
+          if (!urlParams[key]) {
+            config.params = config.params || {};
+            config.params[key] = value;
+          }
+        });
+        return config;
+      }
+    };
+    return sunRestRouter;
+  });
+  'use strict';
+  /* global sunRest */
   sunRest.factory('sunRestBaseModel', function () {
     /**
      * @ngdoc object
@@ -157,7 +423,10 @@
      * @typedef {object} sunRestBaseModel
      */
     var BaseModel = function (data) {
-      this.mngr = new this.constructor.mngrClass(this);
+      Object.defineProperty(this, 'mngr', {
+        value: new this.constructor.mngrClass(this),
+        enumerable: false
+      });
       if (!_.isEmpty(data)) {
         this.mngr.populate(data);
       }
@@ -213,6 +482,7 @@
      * Manager for all model
      */
     function sunRestModelManager(model, schema, modelClass) {
+      // TODO Try to remove dependency
       this.model = model;
       if (schema) {
         /** @type sunRestSchema */
@@ -473,134 +743,79 @@
   });
   'use strict';
   /* global sunRest */
-  sunRest.factory('sunRestRouter', function (sunRestConfig) {
-    /**
-     * This method is intended for encoding *key* or *value* parts of query component. We need a
-     * custom method because encodeURIComponent is too aggressive and encodes stuff that doesn't
-     * have to be encoded per http://tools.ietf.org/html/rfc3986:
-     *    query       = *( pchar / '/' / '?' )
-     *    pchar         = unreserved / pct-encoded / sub-delims / ':' / '@'
-     *    unreserved    = ALPHA / DIGIT / '-' / '.' / '_' / '~'
-     *    pct-encoded   = '%' HEXDIG HEXDIG
-     *    sub-delims    = '!' / '$' / '&' / ''' / '(' / ')'
-     *                     / '*' / '+' / ',' / ';' / '='
-     */
-    function encodeUriQuery(val, pctEncodeSpaces) {
-      return encodeURIComponent(val).replace(/%40/gi, '@').replace(/%3A/gi, ':').replace(/%24/g, '$').replace(/%2C/gi, ',').replace(/%20/g, pctEncodeSpaces ? '%20' : '+');
-    }
-    /**
-     * We need our custom method because encodeURIComponent is too aggressive and doesn't follow
-     * http://www.ietf.org/rfc/rfc3986.txt with regards to the character set (pchar) allowed in path
-     * segments:
-     *    segment       = *pchar
-     *    pchar         = unreserved / pct-encoded / sub-delims / ':' / '@'
-     *    pct-encoded   = '%' HEXDIG HEXDIG
-     *    unreserved    = ALPHA / DIGIT / '-' / '.' / '_' / '~'
-     *    sub-delims    = '!' / '$' / '&' / ''' / '(' / ')'
-     *                     / '*' / '+' / ',' / ';' / '='
-     */
-    function encodeUriSegment(val) {
-      return encodeUriQuery(val, true).replace(/%26/gi, '&').replace(/%3D/gi, '=').replace(/%2B/gi, '+');
-    }
-
-    function sunRestRouter(template, defaults) {
-      this.template = template;
-      this.defaults = defaults || {};
-      this.urlParams = {};
-    }
-    sunRestRouter.prototype = {
-      buildConfig: function (config, params, actionUrl) {
-        params = params || {};
-        actionUrl = actionUrl || params.url;
-        delete params.url;
-        var url, val, encodedVal, urlParams = {};
-        if (actionUrl && actionUrl.indexOf('^') === 0) {
-          url = actionUrl.slice(1);
-        } else {
-          url = this.template;
-          if (actionUrl && actionUrl.indexOf('/') !== 0) {
-            url = this.template + '/' + actionUrl;
-          } else if (actionUrl) {
-            url = actionUrl;
-          }
-          url = sunRestConfig.baseUrl + url;
-        }
-        angular.forEach(url.split(/\W/), function (param) {
-          if (param === 'hasOwnProperty') {
-            throw new Error('hasOwnProperty is not a valid parameter name.');
-          }
-          if (!new RegExp('^\\d+$').test(param) && param && new RegExp('(^|[^\\\\]):' + param + '(\\W|$)').test(url)) {
-            urlParams[param] = true;
-          }
-        });
-        params = params || {};
-        angular.forEach(urlParams, function (_, urlParam) {
-          val = params.hasOwnProperty(urlParam) ? params[urlParam] : this.defaults[urlParam];
-          if (angular.isDefined(val) && val !== null) {
-            encodedVal = encodeUriSegment(val);
-            url = url.replace(new RegExp(':' + urlParam + '(\\W|$)', 'g'), encodedVal + '$1');
-          } else {
-            url = url.replace(new RegExp('(/?):' + urlParam + '(\\W|$)', 'g'), function (match, leadingSlashes, tail) {
-              if (tail.charAt(0) === '/') {
-                return tail;
-              }
-              return leadingSlashes + tail;
+  sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfig, sunRestModelFactory, sunRestRouter) {
+    var sunRestCollection = function (schema) {
+      this.schema = schema;
+      this.router = new sunRestRouter(schema.route);
+      this.model = sunRestModelFactory(schema);
+    };
+    sunRestCollection.prototype.find = function (params, postData) {
+      var promise, id, httpConfig, value, dataLocation, Model = this.model,
+        method = postData ? 'POST' : 'GET',
+        isArray = true;
+      params = params || {};
+      if (!_.isObject(params) && angular.isDefined(params)) {
+        id = params;
+        params = {};
+        params[this.schema.routeIdProperty] = id;
+      }
+      if (_.isObject(params) && params[this.schema.routeIdProperty]) {
+        isArray = false;
+      }
+      dataLocation = isArray === true ? this.schema.dataListLocation : this.schema.dataItemLocation;
+      value = isArray ? [] : new Model();
+      httpConfig = {
+        method: method,
+        data: postData
+      };
+      this.router.buildConfig(httpConfig, params);
+      //noinspection UnnecessaryLocalVariableJS
+      promise = $http(httpConfig).then(function (response) {
+        var extracted, data = response.data,
+          promise = value.$promise;
+        if (data) {
+          extracted = sunUtils.stringJsonParser(dataLocation, data);
+          if (isArray) {
+            value.length = 0;
+            angular.forEach(extracted, function (item) {
+              value.push(new Model(item));
             });
+          } else {
+            value.mngr.populate(extracted);
+            //shallowClearAndCopy(data, value);
+            value.$promise = promise;
           }
-        }, this);
-        // strip trailing slashes and set the url
-        url = url.replace(/\/+$/, '') || '/';
-        // then replace collapse `/.` if found in the last URL path segment before the query
-        // E.g. `http://url.com/id./format?q=x` becomes `http://url.com/id.format?q=x`
-        url = url.replace(/\/\.(?=\w+($|\?))/, '.');
-        // replace escaped `/\.` with `/.`
-        config.url = url.replace(/\/\\\./, '/.');
-        // set params - delegate param encoding to $http
-        angular.forEach(params, function (value, key) {
-          if (!urlParams[key]) {
-            config.params = config.params || {};
-            config.params[key] = value;
-          }
-        });
-        return config;
-      }
+        }
+        value.$resolved = true;
+        response.resource = value;
+        return response;
+      }, function (response) {
+        value.$resolved = true;
+        return $q.reject(response);
+      });
+      value.$promise = promise;
+      value.$resolved = false;
+      return value;
     };
-    return sunRestRouter;
   });
-  angular.module('sun.utils', []).service('sunUtils', function sunUtils() {
-    this.copyProperties = function (from, to, exclude) {
-      var i, props, prop, description;
-      exclude = exclude || [];
-      props = Object.getOwnPropertyNames(from);
-      for (i = 0; i < props.length; i++) {
-        prop = props[i];
-        description = Object.getOwnPropertyDescriptor(from, prop);
-        if (exclude.indexOf(prop) === -1) {
-          Object.defineProperty(to, prop, description);
+  sunRest.factory('sunRestRepository', function (sunRestSchema, sunRestCollection) {
+    return {
+      resources: {},
+      create: function (name, schema) {
+        if (!schema) {
+          if (!_.isObject(name)) {
+            throw new Error('Wrong repository call format');
+          }
+          schema = name;
         }
+        name = schema[name];
+        schema = new sunRestSchema(schema);
+        this.resources[name] = new sunRestCollection(schema);
+        return this.resources[name];
+      },
+      get: function (name) {
+        return this.resources[name];
       }
-    };
-    this.inherit = function (Child, Parent) {
-      var F, f;
-      F = function () {};
-      F.prototype = Parent.prototype;
-      f = new F();
-      this.copyProperties(Child.prototype, f, ['constructor']);
-      Child.prototype = f;
-      Child.prototype.constructor = Child;
-      Child.prototype.$super = Parent.prototype;
-      return Child;
-    };
-    this.stringJsonParser = function (stringPath, object) {
-      var parts, x, returnValue = object;
-      if (stringPath.length > 0) {
-        returnValue = object;
-        parts = stringPath.split('.');
-        for (x = 0; x < parts.length; x += 1) {
-          returnValue = _.isObject(returnValue) ? returnValue[parts[x]] : undefined;
-        }
-      }
-      return returnValue;
     };
   });
 }(angular));

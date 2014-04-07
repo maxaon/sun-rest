@@ -8,7 +8,7 @@
 // 'test/spec/**/*.js'
 
 module.exports = function (grunt) {
-
+  var SRC = ['utils.js', 'sun-rest.js', 'config.js', 'schema.js', 'router.js', 'model.js', 'config.js', 'collection.js'];
   // Load grunt tasks automatically
   require('load-grunt-tasks')(grunt);
 
@@ -24,7 +24,7 @@ module.exports = function (grunt) {
       // configurable paths
       app : 'src',
       dist: 'dist',
-      src : ['utils.js', 'config.js', 'router.js', 'manager.js', 'model.js', 'repository.js']
+      src : SRC
     },
     // Bower configuration
     bwr            : grunt.file.readJSON('bower.json'),
@@ -118,10 +118,12 @@ module.exports = function (grunt) {
 
     // Empties folders to start fresh
     clean          : {
-      dist  : {
+      options: {
+        force: true
+      },
+      dist   : {
         files: [
           {
-            dot: true,
             src: [
               '.tmp',
               '<%= yeoman.dist %>/*',
@@ -130,7 +132,7 @@ module.exports = function (grunt) {
           }
         ]
       },
-      server: '.tmp'
+      server : '.tmp'
     },
 
     // Add vendor prefixed styles
@@ -273,20 +275,27 @@ module.exports = function (grunt) {
     concat         : {
       options: {
         stripBanners: true,
-        process     : function (src) {
-          return src.replace(/[\s\S]*\(function \(\S*\) {\s*['"]use strict['"]\;*([\s\S]*)}\(angular\)\)\;/, '$1')
-            .replace(/\s*var\smodule/, '  module');
-        },
+//        process     : function (src) {
+//          return src.replace(/[\s\S]*\(function \(\S*\) {\s*['"]use strict['"]\;*([\s\S]*)}\(angular\)\)\;/, '$1')
+//            .replace(/\s*var\smodule/, '  module');
+//        },
         banner      : [
           '<%= baseBanner %>' ,
           '(function (angular) {' ,
-          '  \'use strict\';' ,
-          '  var module;'
+          '  \'use strict\';'
+
         ].join('\n'),
         footer      : '}(angular));'
       },
       dist   : {
-        src : '.tmp/concat/scripts/**/*.js',
+        src : (function () {
+          var cwd = '.tmp/concat/scripts/';
+          var arr = SRC;
+          // determine file order here and concat to arr
+          return arr.map(function (file) {
+            return cwd + file;
+          });
+        }()),
         dest: 'dist/sun-rest.js'
       }
     },
@@ -362,6 +371,7 @@ module.exports = function (grunt) {
     'uglify',
     'clean:server',
     'karma:minimized'
+
   ]);
 
   grunt.registerTask('default', ['build']);

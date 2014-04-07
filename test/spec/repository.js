@@ -51,9 +51,9 @@ describe('Rest creation', function () {
   'use strict';
   var $httpBackend, RestRepository;
   beforeEach(module('sun.rest'));
-  beforeEach(inject(function (_$httpBackend_, _RestRepository_) {
+  beforeEach(inject(function (_$httpBackend_, _sunRestRepository_) {
     $httpBackend = _$httpBackend_;
-    RestRepository = _RestRepository_;
+    RestRepository = _sunRestRepository_;
   }));
 
 
@@ -113,9 +113,9 @@ describe('Rest custom creation', function () {
   'use strict';
   var $httpBackend, RestRepository;
   beforeEach(module('sun.rest'));
-  beforeEach(inject(function (_$httpBackend_, _RestRepository_) {
+  beforeEach(inject(function (_$httpBackend_, _sunRestRepository_) {
     $httpBackend = _$httpBackend_;
-    RestRepository = _RestRepository_;
+    RestRepository = _sunRestRepository_;
   }));
   it('should create custom property object', function () {
     var obj, repo, ControllerModel;

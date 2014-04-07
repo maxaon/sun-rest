@@ -8,7 +8,10 @@ sunRest.factory('sunRestBaseModel', function () {
    * @typedef {object} sunRestBaseModel
    */
   var BaseModel = function (data) {
-    this.mngr = new this.constructor.mngrClass(this);
+    Object.defineProperty(this, 'mngr', {
+      value     : new this.constructor.mngrClass(this),
+      enumerable: false
+    });
     if (!_.isEmpty(data)) {
       this.mngr.populate(data);
     }
@@ -63,6 +66,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestCon
    * Manager for all model
    */
   function sunRestModelManager(model, schema, modelClass) {
+    // TODO Try to remove dependency
     this.model = model;
     if (schema) {
       /** @type sunRestSchema */
@@ -224,8 +228,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestCon
 
     this.route.buildConfig(httpConfig,
       angular.extend({}, this.extractParams(data), params));
-
-    promise = this.schema.wrappedRequestInterceptor(this, config)
+    promise = this.schema.wrappedRequestInterceptor(this, httpConfig)
       .then(function (newConfig) {
         return $http(newConfig);
       }).then(function (response) {

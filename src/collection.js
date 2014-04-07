@@ -71,6 +71,7 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
 
 
   };
+  return sunRestCollection;
 });
 sunRest.factory('sunRestRepository', function (sunRestSchema, sunRestCollection) {
   return {

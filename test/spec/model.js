@@ -9,8 +9,8 @@ describe('Test BaseModel creation', function () {
 
   var modelFactory;
 
-  beforeEach(inject(function (_modelFactory_) {
-    modelFactory = _modelFactory_;
+  beforeEach(inject(function (_sunRestModelFactory_) {
+    modelFactory = _sunRestModelFactory_;
   }));
 
   it('should create simple model', function () {

@@ -99,26 +99,23 @@ sunRest.factory('sunRestSchema',
       });
     };
     sunRestSchema.prototype.wrappedRequestInterceptor = function (bind, httpConfig) {
-      return function () {
-        var result = this.requestInterceptor && this.requestInterceptor.call(bind, httpConfig);
-        if (!result) {
-          return $q.when(httpConfig);
-        }
-        else {
-          return $q.when(result);
-        }
+      var result = this.requestInterceptor && this.requestInterceptor.call(bind, httpConfig);
+      if (!result) {
+        return $q.when(httpConfig);
       }
+      else {
+        return $q.when(result);
+      }
+
     };
 
     sunRestSchema.prototype.wrappedResponseInterceptor = function (bind, response) {
-      return function () {
-        var result = this.responseInterceptor && this.responseInterceptor.call(bind, response);
-        if (!result) {
-          return $q.when(response);
-        }
-        else {
-          return $q.when(result);
-        }
+      var result = this.responseInterceptor && this.responseInterceptor.call(bind, response);
+      if (!result) {
+        return $q.when(response);
+      }
+      else {
+        return $q.when(result);
       }
     };
     sunRestSchema.defaultDataExtractor = function (path, response) {
