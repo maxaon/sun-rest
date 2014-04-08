@@ -274,13 +274,12 @@ module.exports = function (grunt) {
     concat         : {
       options: {
         stripBanners: true,
-//        process     : function (src) {
-//          return src.replace(/[\s\S]*\(function \(\S*\) {\s*['"]use strict['"]\;*([\s\S]*)}\(angular\)\)\;/, '$1')
-//            .replace(/\s*var\smodule/, '  module');
-//        },
+        process     : function (src) {
+          return src.replace(/\s*['"]use strict['"]\;*\s*/, '');
+        },
         banner      : [
           '<%= baseBanner %>' ,
-          '(function (angular) {' ,
+          '(function (angular,undefined) {' ,
           '  \'use strict\';'
 
         ].join('\n'),

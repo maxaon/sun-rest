@@ -1,5 +1,5 @@
-(function (angular) {
-  'use strict';
+/*! sun-rest v0.0.4 by maxaon*/
+(function (angular, undefined) {
   'use strict';
   angular.module('sun.utils', []).service('sunUtils', function sunUtils() {
     this.copyProperties = function (from, to, exclude) {
@@ -37,9 +37,22 @@
       return returnValue;
     };
   });
-  'use strict';
+  /**
+   * @name sunRest
+   */
   var sunRest = angular.module('sun.rest', ['sun.utils']);
-  'use strict';
+  /**
+   * @ngdoc object
+   * @name sunRest.sunRestConfigProvider
+   * @typedef  {object} RestConfigProvider
+   * @property {bool} strictMode Desc strictmodel
+   * @property {bool} strictMode1 Desc strictmodel1
+   * @property {bool} strictMode2 Desc strictmodel2
+   * @constructor
+   *
+   * @description
+   *
+   */
   sunRest.provider('sunRestConfig', function () {
     var baseUrl = '',
       responseDataLocation = '',
@@ -156,6 +169,13 @@
       }
     };
     Object.defineProperties(this, properties);
+    //noinspection JSPotentiallyInvalidUsageOfThis
+    /**
+     * @ngdoc object
+     * @name sunRest.sunRestConfig
+     * @description
+     * Bla blas vlss
+     */
     this.$get = function () {
       return Object.defineProperties({}, _.mapValues(properties, function (param) {
         return {
@@ -164,12 +184,42 @@
       }));
     };
   });
-  'use strict';
   sunRest.factory('sunRestSchema', [
     '$q',
     'sunUtils',
     'sunRestConfig',
     function ($q, sunUtils, sunRestConfig) {
+      /**
+       * @ngdoc object
+       * @name sunRest.sunRestSchema:PropertyDescription
+       * @typedef {object} PropertyDescription
+       * @property {function} setter Function to set value
+       * @property {function} getter Function to get value
+       * @property {string} remoteProperty Name of the remote property
+       */
+      /**
+       * @ngdoc service
+       * @name sunRest.sunRestSchema
+       * @typedef {object} sunRestSchema
+       * @constructor
+       * @param {object} properties Properties of the schema
+       *
+       * @property {string}  name
+       * @property {string}  route
+       * @property {string}  idProperty
+       * @property {string}  routeIdProperty
+       * @property {PropertyDescription[]}  properties
+       * @property {object}  relations
+       * @property {string}  dataListLocation
+       * @property {string}  dataItemLocation
+       * @property {boolean}  autoParse
+       * @property {function}  requestInterceptor
+       * @property {function}  responseInterceptor
+       * @property {boolean}  isArray
+       * @property {object}  paramDefaults
+       * @property {function}  propertyModifier
+       * @property {function}  dataExtractor
+       */
       function sunRestSchema(properties) {
         angular.extend(this, this.defaultProperties, properties);
         if (!this.routeIdProperty) {
@@ -179,6 +229,11 @@
           this.applyPropertyModifier(this.properties, this.propertyModifier);
         }
       }
+      /**
+       * @name sunRest.sunRestSchema.defaultProperties
+       * @memberOf sunRest.sunRestSchema
+       * @methodOf sunRest.sunRestSchema
+       */
       sunRestSchema.prototype.defaultProperties = {
         name: null,
         route: null,
@@ -196,6 +251,11 @@
         propertyModifier: sunRestConfig.propertyModifier,
         dataExtractor: sunRestConfig.dataExtractor
       };
+      /**
+       * @name sunRest.sunRestSchema.extractRouteIdProperty
+       * @memberOf sunRest.sunRestSchema
+       * @methodOf sunRest.sunRestSchema
+       */
       sunRestSchema.prototype.extractRouteIdProperty = function (route) {
         var keys = route.match(/:\w[\w0-9-_]*/g);
         if (keys.length === 0) {
@@ -203,6 +263,11 @@
         }
         return keys[keys.length - 1].slice(1);
       };
+      /**
+       * @name sunRest.sunRestSchema.applyPropertyModifier
+       * @memberOf sunRest.sunRestSchema
+       * @methodOf sunRest.sunRestSchema
+       */
       sunRestSchema.prototype.applyPropertyModifier = function (properties, modifier) {
         var newProperty;
         _.forEach(properties, function (property, name) {
@@ -244,14 +309,34 @@
       return sunRestSchema;
     }
   ]);
-  'use strict';
   sunRest.factory('sunRestRouter', [
     'sunRestConfig',
     function (sunRestConfig) {
+      /**
+       * This method is intended for encoding *key* or *value* parts of query component. We need a
+       * custom method because encodeURIComponent is too aggressive and encodes stuff that doesn't
+       * have to be encoded per http://tools.ietf.org/html/rfc3986:
+       *    query       = *( pchar / '/' / '?' )
+       *    pchar         = unreserved / pct-encoded / sub-delims / ':' / '@'
+       *    unreserved    = ALPHA / DIGIT / '-' / '.' / '_' / '~'
+       *    pct-encoded   = '%' HEXDIG HEXDIG
+       *    sub-delims    = '!' / '$' / '&' / ''' / '(' / ')'
+       *                     / '*' / '+' / ',' / ';' / '='
+       */
       function encodeUriQuery(val, pctEncodeSpaces) {
         return encodeURIComponent(val).replace(/%40/gi, '@').replace(/%3A/gi, ':').replace(/%24/g, '$').replace(/%2C/gi, ',').replace(/%20/g, pctEncodeSpaces ? '%20' : '+');
       }
-
+      /**
+       * We need our custom method because encodeURIComponent is too aggressive and doesn't follow
+       * http://www.ietf.org/rfc/rfc3986.txt with regards to the character set (pchar) allowed in path
+       * segments:
+       *    segment       = *pchar
+       *    pchar         = unreserved / pct-encoded / sub-delims / ':' / '@'
+       *    pct-encoded   = '%' HEXDIG HEXDIG
+       *    unreserved    = ALPHA / DIGIT / '-' / '.' / '_' / '~'
+       *    sub-delims    = '!' / '$' / '&' / ''' / '(' / ')'
+       *                     / '*' / '+' / ',' / ';' / '='
+       */
       function encodeUriSegment(val) {
         return encodeUriQuery(val, true).replace(/%26/gi, '&').replace(/%3D/gi, '=').replace(/%2B/gi, '+');
       }
@@ -301,9 +386,14 @@
               });
             }
           }, this);
+          // strip trailing slashes and set the url
           url = url.replace(/\/+$/, '') || '/';
+          // then replace collapse `/.` if found in the last URL path segment before the query
+          // E.g. `http://url.com/id./format?q=x` becomes `http://url.com/id.format?q=x`
           url = url.replace(/\/\.(?=\w+($|\?))/, '.');
+          // replace escaped `/\.` with `/.`
           config.url = url.replace(/\/\\\./, '/.');
+          // set params - delegate param encoding to $http
           angular.forEach(params, function (value, key) {
             if (!urlParams[key]) {
               config.params = config.params || {};
@@ -316,9 +406,15 @@
       return sunRestRouter;
     }
   ]);
-  'use strict';
   sunRest.factory('sunRestBaseModel', function () {
+    /**
+     * @ngdoc object
+     * @name sunRest.sunRestBaseModel
+     * @property {string} ppp
+     * @typedef {object} sunRestBaseModel
+     */
     var BaseModel = function (data) {
+      // Manager can not be properly copied by `angular.copy`
       Object.defineProperty(this, 'mngr', {
         value: new this.constructor.mngrClass(this),
         enumerable: false
@@ -340,6 +436,7 @@
     'sunRestConfig',
     'sunRestRouter',
     function ($http, $q, sunUtils, sunRestConfig, sunRestRouter) {
+      //region Dotted path
       var MEMBER_NAME_REGEX = /^(\.[a-zA-Z_$][0-9a-zA-Z_$]*)+$/;
 
       function hasBody(method) {
@@ -365,10 +462,31 @@
         }
         return obj;
       }
-
+      //endregion
+      /**
+       * @ngdoc service
+       * @name sunRest.sunRestModelManager
+       *
+       * @constructor
+       * @param {sunRestBaseModel} model Managed model
+       * @param {?sunRestSchema} schema Schema of the resource
+       * @param {?sunRestBaseModel} modelClass Model class
+       *
+       * @property {sunRestBaseModel} model Managed model
+       * @property  {sunRestSchema} schema Resource schema
+       * @property  {sunRestBaseModel} modelClass Model class
+       *
+       * @description
+       * Manager for all model
+       */
       function sunRestModelManager(model, schema, modelClass) {
-        this.model = model;
+        // TODO Try to remove dependency
+        Object.defineProperty(this, 'model', {
+          value: model,
+          enumerable: false
+        });
         if (schema) {
+          /** @type sunRestSchema */
           this.schema = schema;
         }
         if (modelClass) {
@@ -474,7 +592,7 @@
                 value.push(new Model(item));
               });
             } else {
-              value.populate(extracted);
+              value.populate(extracted); //shallowClearAndCopy(data, value);
             }
           }
           value.$resolved = true;
@@ -515,6 +633,7 @@
       Object.defineProperties(sunRestModelManager.prototype, {
         state: {
           get: function () {
+            /*jslint white:true*/
             var state;
             if (!this.remoteFlag) {
               state = this.NEW;
@@ -562,7 +681,12 @@
       function DefaultChild(data) {
         this.$super.constructor.call(this, data);
       }
-
+      /**
+       * Name sunRestModelFactory
+       * @param schema
+       * @returns {*}
+       * @constructor
+       */
       function sunRestModelFactory(schema) {
         var Model, modelProperties = {};
         Model = sunUtils.inherit(schema.inherit || DefaultChild, sunRestBaseModel);
@@ -627,7 +751,6 @@
       return sunRestModelFactory;
     }
   ]);
-  'use strict';
   sunRest.factory('sunRestCollection', [
     '$q',
     '$http',
@@ -661,6 +784,7 @@
           data: postData
         };
         this.router.buildConfig(httpConfig, params);
+        //noinspection UnnecessaryLocalVariableJS
         promise = $http(httpConfig).then(function (response) {
           var extracted, data = response.data,
             promise = value.$promise;
@@ -673,6 +797,7 @@
               });
             } else {
               value.mngr.populate(extracted);
+              //shallowClearAndCopy(data, value);
               value.$promise = promise;
             }
           }
@@ -703,7 +828,7 @@
             }
             schema = name;
           }
-          name = schema[name];
+          name = schema['name'];
           schema = new sunRestSchema(schema);
           this.resources[name] = new sunRestCollection(schema);
           return this.resources[name];
