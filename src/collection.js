@@ -83,7 +83,7 @@ sunRest.factory('sunRestRepository', function (sunRestSchema, sunRestCollection)
         }
         schema = name;
       }
-      name = schema[name];
+      name = schema['name'];
       schema = new sunRestSchema(schema);
       this.resources[name] = new sunRestCollection(schema);
       return this.resources[name];

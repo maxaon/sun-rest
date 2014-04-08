@@ -57,57 +57,68 @@ describe('Rest creation', function () {
   }));
 
 
-  it('should create repository', function () {
-    var repo = RestRepository.create(userSchema());
-
-    describe('should make rest requests', function () {
-
-      it('should retrieve object', function () {
-        $httpBackend.expect('GET', '/controllers').respond([model()]);
-        var obj = repo.find();
-        expect(obj.length).toBe(0);
-        $httpBackend.flush();
-        expect(obj.length).toBe(1);
-        expect(obj[0]).toBeInstanceOf(repo.model);
-        expect(obj[0].title).toBe('Home 12');
-        expect(obj[0].devices).toEqual([1, 2, 3]);
-      });
-      it('should create new object', function () {
-        var obj = new repo.model();
-        expect(obj.mngr.state).toBe(obj.mngr.NEW);
-        angular.extend(obj, model());
-        obj.id = undefined;
-        $httpBackend.expect('POST', '/controllers').respond([model()]);
-        obj.mngr.save();
-        $httpBackend.flush();
-      });
-      it('should make two responses', function () {
-        $httpBackend.expect('GET', '/controllers').respond([model()]);
-        var objs = repo.find();
-        $httpBackend.flush();
-        expect(objs.length).toBe(1);
-        $httpBackend.expect('GET', '/controllers').respond([model()]);
-        objs = repo.find();
-        $httpBackend.flush();
-        expect(objs.length).toBe(1);
-      });
-      it('Should save object save ', function () {
-        $httpBackend.expect('GET', '/controllers/12').respond(model());
-        var obj = repo.find(12);
-        $httpBackend.flush();
-        expect(obj.mngr.state).toBe(obj.mngr.LOADED);
-        obj.title = 'New title';
-        expect(obj.mngr.state).toBe(obj.mngr.DIRTY);
-        $httpBackend
-          .expect('PUT', '/controllers/12', model({title: 'New title'}))
-          .respond(model({title: 'ServerSideTitle'}));
-        obj.mngr.save();
-        $httpBackend.flush();
-        expect(obj.mngr.state).toBe(obj.mngr.LOADED);
-        expect(obj.title).toBe('ServerSideTitle');
-      });
-    });
+  it('should retrieve object', function () {
+    var globalRepo = RestRepository.create(userSchema());
+    $httpBackend.expect('GET', '/controllers').respond([model()]);
+    var obj = globalRepo.find();
+    expect(obj.length).toBe(0);
+    $httpBackend.flush();
+    expect(obj.length).toBe(1);
+    expect(obj[0]).toBeInstanceOf(globalRepo.model);
+    expect(obj[0].title).toBe('Home 12');
+    expect(obj[0].devices).toEqual([1, 2, 3]);
   });
+  it('should create new object', function () {
+    var globalRepo = RestRepository.create(userSchema());
+    var obj = new globalRepo.model();
+    expect(obj.mngr.state).toBe(obj.mngr.NEW);
+    angular.extend(obj, model());
+    obj.id = undefined;
+    $httpBackend.expect('POST', '/controllers').respond([model()]);
+    obj.mngr.save();
+    $httpBackend.flush();
+  });
+  it('should make two responses', function () {
+    var globalRepo = RestRepository.create(userSchema());
+    $httpBackend.expect('GET', '/controllers').respond([model()]);
+    var objs = globalRepo.find();
+    $httpBackend.flush();
+    expect(objs.length).toBe(1);
+    $httpBackend.expect('GET', '/controllers').respond([model()]);
+    objs = globalRepo.find();
+    $httpBackend.flush();
+    expect(objs.length).toBe(1);
+  });
+  it('Should save object save ', function () {
+    var globalRepo = RestRepository.create(userSchema());
+    $httpBackend.expect('GET', '/controllers/12').respond(model());
+    var obj = globalRepo.find(12);
+    $httpBackend.flush();
+    expect(obj.mngr.state).toBe(obj.mngr.LOADED);
+    obj.title = 'New title';
+    expect(obj.mngr.state).toBe(obj.mngr.DIRTY);
+    $httpBackend
+      .expect('PUT', '/controllers/12', model({title: 'New title'}))
+      .respond(model({title: 'ServerSideTitle'}));
+    obj.mngr.save();
+    $httpBackend.flush();
+    expect(obj.mngr.state).toBe(obj.mngr.LOADED);
+    expect(obj.title).toBe('ServerSideTitle');
+  });
+it('should copy model data', function () {
+    var repo = RestRepository.create(userSchema());
+    $httpBackend.expect('GET', '/controllers').respond([model()]);
+    var obj = repo.find();
+    $httpBackend.flush();
+    obj = obj[0];
+    var obj_copy = angular.copy(obj);
+    expect(obj_copy).toBeDefined();
+    expect(obj_copy).not.toBe(obj);
+    expect(obj.mngr).toBeDefined();
+    expect(obj_copy.mngr).toBeUndefined();
+
+  });
+
 });
 describe('Rest custom creation', function () {
   'use strict';

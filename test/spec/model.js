@@ -104,4 +104,5 @@ describe('Test BaseModel creation', function () {
 
 
   });
+
 });

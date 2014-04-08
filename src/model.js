@@ -8,10 +8,12 @@ sunRest.factory('sunRestBaseModel', function () {
    * @typedef {object} sunRestBaseModel
    */
   var BaseModel = function (data) {
+    // Manager can not be properly copied by `angular.copy`
     Object.defineProperty(this, 'mngr', {
       value     : new this.constructor.mngrClass(this),
       enumerable: false
     });
+
     if (!_.isEmpty(data)) {
       this.mngr.populate(data);
     }
@@ -67,7 +69,11 @@ sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestCon
    */
   function sunRestModelManager(model, schema, modelClass) {
     // TODO Try to remove dependency
-    this.model = model;
+    Object.defineProperty(this, 'model', {
+      value     : model,
+      enumerable: false
+    });
+
     if (schema) {
       /** @type sunRestSchema */
       this.schema = schema;
