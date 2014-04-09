@@ -764,17 +764,20 @@
         this.router = new sunRestRouter(schema.route);
         this.model = sunRestModelFactory(schema);
       };
-      sunRestCollection.prototype.find = function (params, postData) {
+      sunRestCollection.prototype.find = function (params, postData, options) {
         var promise, id, httpConfig, value, dataLocation, Model = this.model,
           method = postData ? 'POST' : 'GET',
           isArray = true;
         params = params || {};
+        options = options || {};
         if (!_.isObject(params) && angular.isDefined(params)) {
           id = params;
           params = {};
           params[this.schema.routeIdProperty] = id;
         }
-        if (_.isObject(params) && params[this.schema.routeIdProperty]) {
+        if (angular.isDefined(options.isArray)) {
+          isArray = options.isArray;
+        } else if (_.isObject(params) && params[this.schema.routeIdProperty]) {
           isArray = false;
         }
         dataLocation = isArray === true ? this.schema.dataListLocation : this.schema.dataItemLocation;
