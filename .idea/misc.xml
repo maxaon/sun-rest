@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="IdProvider" IDEtalkID="DB8CF7D0E197281D2756B474D64DF7C1" />
   <component name="ProjectKey">
     <option name="state" value="https://github.com/maxaon/sun-rest.git" />
   </component>
-  <component name="ProjectRootManager" version="2" />
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_1_3" assert-keyword="false" jdk-15="false" />
 </project>
 
