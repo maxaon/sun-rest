@@ -41,6 +41,10 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
 
 
   function sunRestRouter(template, defaults) {
+    if (template) {
+      if (template[template.length - 1] === '/')
+        template = template.slice(0, -1);
+    }
     this.template = template;
     this.defaults = defaults || {};
     this.urlParams = {};
@@ -59,13 +63,19 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
         url = actionUrl.slice(1);
       } else {
         url = this.template;
-        if (actionUrl && actionUrl.indexOf('/') !== 0) {
-          url = this.template + '/' + actionUrl;
-        } else if (actionUrl) {
-          url = actionUrl;
+        if (actionUrl) {
+          if (actionUrl[actionUrl.length - 1] == '/' && actionUrl.length !== 1)
+            actionUrl = actionUrl.slice(0, -1);
+          if (actionUrl[0] === '/') {
+            url = actionUrl;
+          } else {
+            url = this.template + '/' + actionUrl;
+          }
         }
-
-        url = sunRestConfig.baseUrl + url;
+        if (url[0] === '/')
+          url = sunRestConfig.baseUrl + url + '/';
+        else
+          url = url + '/';
       }
 
 
@@ -96,8 +106,12 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
         }
       }, this);
 
+
       // strip trailing slashes and set the url
-      url = url.replace(/\/+$/, '') || '/';
+      if (sunRestConfig.trailingSlashes === false) {
+        url = url.slice(0, url.length - 1) || '/'
+      }
+
       // then replace collapse `/.` if found in the last URL path segment before the query
       // E.g. `http://url.com/id./format?q=x` becomes `http://url.com/id.format?q=x`
       url = url.replace(/\/\.(?=\w+($|\?))/, '.');

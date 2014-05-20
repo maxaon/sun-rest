@@ -18,6 +18,13 @@ angular.module('sun.utils', [])
     };
 
     this.inherit = function (Child, Parent) {
+      if (!angular.isFunction(Child)) {
+        var DefaultChild = function () {
+          this.$super.constructor.apply(this, arguments);
+        };
+        DefaultChild.prototype = Child;
+        return this.inherit(DefaultChild, Parent);
+      }
       var F, f;
       F = function () {
       };

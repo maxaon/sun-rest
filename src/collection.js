@@ -5,28 +5,24 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
     this.schema = schema;
     this.router = new sunRestRouter(schema.route);
     this.model = sunRestModelFactory(schema);
-
   };
-  sunRestCollection.prototype.find = function (params, postData, options) {
+  sunRestCollection.prototype.find = function (params, postData) {
     var promise,
       id,
       httpConfig,
       value,
       dataLocation,
       Model = this.model,
+      schema = this.schema,
       method = postData ? 'POST' : 'GET',
       isArray = true;
     params = params || {};
-    options = options || {};
     if (!_.isObject(params) && angular.isDefined(params)) {
       id = params;
       params = {};
       params[this.schema.routeIdProperty] = id;
     }
-    if (angular.isDefined(options.isArray)) {
-      isArray = options.isArray;
-    }
-    else if (_.isObject(params) && (params[this.schema.routeIdProperty])) {
+    if (_.isObject(params) && (params[this.schema.routeIdProperty])) {
       isArray = false;
     }
 
@@ -37,7 +33,13 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
     this.router.buildConfig(httpConfig, params);
 
     //noinspection UnnecessaryLocalVariableJS
-    promise = $http(httpConfig)
+    promise = this.schema.wrappedRequestInterceptor(this, httpConfig)
+      .then(function (newConfig) {
+        return $http(newConfig);
+      })
+      .then(function (response) {
+        return schema.wrappedResponseInterceptor(this, response)
+      })
       .then(function (response) {
         var extracted,
           data = response.data,
@@ -63,8 +65,6 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
         return response;
       }, function (response) {
         value.$resolved = true;
-
-
         return $q.reject(response);
       });
 
@@ -72,15 +72,13 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
     value.$resolved = false;
 
     return value;
-
-
   };
   return sunRestCollection;
 });
 sunRest.factory('sunRestRepository', function (sunRestSchema, sunRestCollection) {
   return {
     resources: {},
-    create   : function (name, schema) {
+    create: function (name, schema) {
       if (!schema) {
         if (!_.isObject(name)) {
           throw new Error('Wrong repository call format');
@@ -92,7 +90,7 @@ sunRest.factory('sunRestRepository', function (sunRestSchema, sunRestCollection)
       this.resources[name] = new sunRestCollection(schema);
       return this.resources[name];
     },
-    get      : function (name) {
+    get: function (name) {
       return this.resources[name];
     }
   };

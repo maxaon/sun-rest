@@ -1,6 +1,7 @@
 'use strict';
 /* global sunRest */
 sunRest.factory('sunRestBaseModel', function () {
+
   /**
    * @ngdoc object
    * @name sunRest.sunRestBaseModel
@@ -10,18 +11,33 @@ sunRest.factory('sunRestBaseModel', function () {
   var BaseModel = function (data) {
     // Manager can not be properly copied by `angular.copy`
     Object.defineProperty(this, 'mngr', {
-      value     : new this.constructor.mngrClass(this),
+      value: new this.constructor.mngrClass(this),
       enumerable: false
     });
-
+    this._setDefaults(data);
     if (!_.isEmpty(data)) {
       this.mngr.populate(data);
     }
   };
+
   BaseModel.prototype.constructor = BaseModel;
   BaseModel.prototype.toJSON = function () {
     return this.mngr.toJSON();
   };
+  BaseModel.prototype._setDefaults = function (data) {
+    this.mngr.populating = true;
+    _.forEach(this.mngr.schema.properties, function (prop, prop_name) {
+      var default_value = prop['default'];
+      if (default_value !== undefined && (data === undefined || prop_name in data)) {
+        if (angular.isFunction(default_value)) {
+          default_value = new default_value();
+        }
+        this[prop_name] = default_value;
+      }
+    }, this);
+    this.mngr.populating = false;
+  };
+
   return BaseModel;
 });
 sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestConfig, sunRestRouter) {
@@ -70,7 +86,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestCon
   function sunRestModelManager(model, schema, modelClass) {
     // TODO Try to remove dependency
     Object.defineProperty(this, 'model', {
-      value     : model,
+      value: model,
       enumerable: false
     });
 
@@ -89,6 +105,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestCon
     this.originalData = {};
     this.changedProperties = {};
     this.deleteFlag = false;
+    this.populating = false;
 
   }
 
@@ -103,13 +120,15 @@ sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestCon
 
   sunRestModelManager.prototype.populate = function (data) {
     var properties = this.schema.properties;
+    this.populating = true;
     data = this.normalizeData(data, this.NORMALIZE_INCOMING);
     angular.forEach(data, function (value, key) {
       if (properties[key] && properties[key].toNative) {
         value = properties[key].toNative(value);
       }
-      this['__' + key] = value;
+      this[key] = value;
     }, this.model);
+    this.populating = false;
     this.remoteFlag = true;
     this.modifyFlag = false;
     this.changedProperties = {};
@@ -255,6 +274,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestCon
       get: function () {
         /*jslint white:true*/
         var state;
+        this.i = (this.i || 0) + 1
 
         if (!this.remoteFlag) {
           state = this.NEW;
@@ -303,10 +323,6 @@ sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestCon
 });
 sunRest.factory('sunRestModelFactory', function (sunUtils, sunRestBaseModel, sunRestModelManager) {
 
-  function DefaultChild(data) {
-    this.$super.constructor.call(this, data);
-  }
-
   /**
    * Name sunRestModelFactory
    * @param schema
@@ -316,34 +332,35 @@ sunRest.factory('sunRestModelFactory', function (sunUtils, sunRestBaseModel, sun
   function sunRestModelFactory(schema) {
     var Model, modelProperties = {};
 
-    Model = sunUtils.inherit(schema.inherit || DefaultChild, sunRestBaseModel);
-    _.forEach(schema.properties, function (value, key) {
+
+    Model = sunUtils.inherit(schema.inherit || {}, sunRestBaseModel);
+    _.forEach(schema.properties, function (prop, prop_name) {
       var customSetter = false,
         customGetter = false,
         customProperty = false,
         defaultGetMethod,
         defaultSetMethod;
-      if (Model.prototype[key]) {
+      if (Model.prototype[prop_name]) {
         customGetter = customSetter = customProperty = true;
       } else {
-        customGetter = !!schema.properties[key].getter;
-        customSetter = !!schema.properties[key].setter;
+        customGetter = !!schema.properties[prop_name].getter;
+        customSetter = !!schema.properties[prop_name].setter;
       }
-      modelProperties['_' + key] = {
+      modelProperties['_' + prop_name] = {
         get: function () {
-          return this['__' + key];
+          return this['__' + prop_name];
         },
         set: function (value) {
-          if (value !== this['__' + key]) {
-            if (value === this.mngr.originalData[key]) {
-              delete this.mngr.changedProperties[key];
+          if (value != this['__' + prop_name] && !this.mngr.populating) {
+            if (value == this.mngr.originalData[prop_name]) {
+              delete this.mngr.changedProperties[prop_name];
               this.mngr.modifyFlag = Object.keys(this.mngr.changedProperties).length > 0;
             } else {
-              this.mngr.changedProperties[key] = true;
+              this.mngr.changedProperties[prop_name] = true;
               this.mngr.modifyFlag = true;
             }
           }
-          this['__' + key] = value;
+          this['__' + prop_name] = value;
         }
       };
       if (customProperty) {
@@ -352,24 +369,27 @@ sunRest.factory('sunRestModelFactory', function (sunUtils, sunRestBaseModel, sun
 
       if (customGetter) {
         defaultGetMethod = function () {
-          return schema.properties[key].getter.call(this, this['_' + key]);
+          return schema.properties[prop_name].getter.call(this, this['_' + prop_name]);
         };
       } else {
         defaultGetMethod = function () {
-          return this['_' + key];
+          return this['_' + prop_name];
         };
       }
       if (customSetter) {
         defaultSetMethod = function (value) {
-          this['_' + key] = schema.properties[key].setter.call(this, value);
+          var res = schema.properties[prop_name].setter.call(this, value);
+          if (res !== undefined) {
+            this['_' + prop_name] = res;
+          }
         };
       } else {
         defaultSetMethod = function (value) {
-          this['_' + key] = value;
+          this['_' + prop_name] = value;
         };
       }
 
-      modelProperties[key] = {
+      modelProperties[prop_name] = {
         get: defaultGetMethod,
         set: defaultSetMethod
       };

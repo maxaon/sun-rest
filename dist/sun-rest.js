@@ -15,6 +15,13 @@
       }
     };
     this.inherit = function (Child, Parent) {
+      if (!angular.isFunction(Child)) {
+        var DefaultChild = function () {
+          this.$super.constructor.apply(this, arguments);
+        };
+        DefaultChild.prototype = Child;
+        return this.inherit(DefaultChild, Parent);
+      }
       var F, f;
       F = function () {};
       F.prototype = Parent.prototype;
@@ -41,6 +48,146 @@
    * @name sunRest
    */
   var sunRest = angular.module('sun.rest', ['sun.utils']);
+  var isDefined = angular.isDefined,
+    isFunction = angular.isFunction,
+    isString = angular.isString,
+    isObject = angular.isObject,
+    isArray = angular.isArray,
+    forEach = angular.forEach,
+    extend = angular.extend,
+    copy = angular.copy;
+
+  function isWindow(obj) {
+    return obj && obj.document && obj.location && obj.alert && obj.setInterval;
+  }
+
+  function isArrayLike(obj) {
+    if (obj == null || isWindow(obj)) {
+      return false;
+    }
+    var length = obj.length;
+    if (obj.nodeType === 1 && length) {
+      return true;
+    }
+    return isString(obj) || isArray(obj) || length === 0 || typeof length === 'number' && length > 0 && length - 1 in obj;
+  }
+
+  function $watchCollection(objGetter, listener) {
+    var self = this;
+    // the current value, updated on each dirty-check run
+    var newValue;
+    // a shallow copy of the newValue from the last dirty-check run,
+    // updated to match newValue during dirty-check run
+    var oldValue;
+    // a shallow copy of the newValue from when the last change happened
+    var veryOldValue;
+    // only track veryOldValue if the listener is asking for it
+    var trackVeryOldValue = listener.length > 1;
+    var changeDetected = 0;
+    //  var objGetter = $parse(obj);
+    var internalArray = [];
+    var internalObject = {};
+    var initRun = true;
+    var oldLength = 0;
+
+    function $watchCollectionWatch() {
+      newValue = objGetter(self);
+      var newLength, key;
+      if (!isObject(newValue)) {
+        // if primitive
+        if (oldValue !== newValue) {
+          oldValue = newValue;
+          changeDetected++;
+        }
+      } else if (isArrayLike(newValue)) {
+        if (oldValue !== internalArray) {
+          // we are transitioning from something which was not an array into array.
+          oldValue = internalArray;
+          oldLength = oldValue.length = 0;
+          changeDetected++;
+        }
+        newLength = newValue.length;
+        if (oldLength !== newLength) {
+          // if lengths do not match we need to trigger change notification
+          changeDetected++;
+          oldValue.length = oldLength = newLength;
+        }
+        // copy the items to oldValue and look for changes.
+        for (var i = 0; i < newLength; i++) {
+          var bothNaN = oldValue[i] !== oldValue[i] && newValue[i] !== newValue[i];
+          if (!bothNaN && oldValue[i] !== newValue[i]) {
+            changeDetected++;
+            oldValue[i] = newValue[i];
+          }
+        }
+      } else {
+        if (oldValue !== internalObject) {
+          // we are transitioning from something which was not an object into object.
+          oldValue = internalObject = {};
+          oldLength = 0;
+          changeDetected++;
+        }
+        // copy the items to oldValue and look for changes.
+        newLength = 0;
+        for (key in newValue) {
+          if (newValue.hasOwnProperty(key)) {
+            newLength++;
+            if (oldValue.hasOwnProperty(key)) {
+              if (oldValue[key] !== newValue[key]) {
+                changeDetected++;
+                oldValue[key] = newValue[key];
+              }
+            } else {
+              oldLength++;
+              oldValue[key] = newValue[key];
+              changeDetected++;
+            }
+          }
+        }
+        if (oldLength > newLength) {
+          // we used to have more keys, need to find them and destroy them.
+          changeDetected++;
+          for (key in oldValue) {
+            if (oldValue.hasOwnProperty(key) && !newValue.hasOwnProperty(key)) {
+              oldLength--;
+              delete oldValue[key];
+            }
+          }
+        }
+      }
+      return changeDetected;
+    }
+
+    function $watchCollectionAction() {
+      if (initRun) {
+        initRun = false;
+        listener(newValue, newValue, self);
+      } else {
+        listener(newValue, veryOldValue, self);
+      }
+      // make a copy for the next time a collection is changed
+      if (trackVeryOldValue) {
+        if (!isObject(newValue)) {
+          //primitive
+          veryOldValue = newValue;
+        } else if (isArrayLike(newValue)) {
+          veryOldValue = new Array(newValue.length);
+          for (var i = 0; i < newValue.length; i++) {
+            veryOldValue[i] = newValue[i];
+          }
+        } else {
+          // if object
+          veryOldValue = {};
+          for (var key in newValue) {
+            if (hasOwnProperty.call(newValue, key)) {
+              veryOldValue[key] = newValue[key];
+            }
+          }
+        }
+      }
+    }
+    return this.$watch($watchCollectionWatch, $watchCollectionAction);
+  }
   /**
    * @ngdoc object
    * @name sunRest.sunRestConfigProvider
@@ -55,29 +202,47 @@
    */
   sunRest.provider('sunRestConfig', function () {
     var baseUrl = '',
-      responseDataLocation = '',
+      responseDataListLocation = '',
+      responseDataItemLocation = '',
       modelIdProperty = 'id',
       updateMethod = 'PUT',
       updatePartial = false,
-      propertyModifier, requestInterceptor, requestErrorInterceptor, responseInterceptor, responseErrorInterceptor, properties, dataExtractor;
+      propertyModifier, requestInterceptor, requestErrorInterceptor, responseInterceptor, responseErrorInterceptor, properties, trailingSlashes = false,
+      dataExtractor;
     properties = {
       baseUrl: {
         get: function () {
           return baseUrl;
         },
         set: function (value) {
-          if (value.lastIndexOf('/') === value.length - 1) {
+          if (value[value.length - 1] === '/') {
             value = value.slice(0, -1);
           }
           baseUrl = value;
         }
       },
-      responseDataLocation: {
+      trailingSlashes: {
         get: function () {
-          return responseDataLocation;
+          return trailingSlashes;
         },
         set: function (value) {
-          responseDataLocation = value;
+          trailingSlashes = bool(value);
+        }
+      },
+      responseDataListLocation: {
+        get: function () {
+          return responseDataListLocation;
+        },
+        set: function (value) {
+          responseDataListLocation = value;
+        }
+      },
+      responseDataItemLocation: {
+        get: function () {
+          return responseDataItemLocation;
+        },
+        set: function (value) {
+          responseDataItemLocation = value;
         }
       },
       modelIdProperty: {
@@ -241,8 +406,8 @@
         routeIdProperty: null,
         properties: {},
         relations: {},
-        dataListLocation: sunRestConfig.responseDataLocation,
-        dataItemLocation: sunRestConfig.responseDataLocation,
+        dataListLocation: sunRestConfig.responseDataListLocation,
+        dataItemLocation: sunRestConfig.responseDataItemLocation,
         autoParse: true,
         requestInterceptor: sunRestConfig.requestInterceptor,
         responseInterceptor: sunRestConfig.responseInterceptor,
@@ -258,7 +423,7 @@
        */
       sunRestSchema.prototype.extractRouteIdProperty = function (route) {
         var keys = route.match(/:\w[\w0-9-_]*/g);
-        if (keys.length === 0) {
+        if (keys === null || keys.length === 0) {
           return null;
         }
         return keys[keys.length - 1].slice(1);
@@ -342,6 +507,10 @@
       }
 
       function sunRestRouter(template, defaults) {
+        if (template) {
+          if (template[template.length - 1] === '/')
+            template = template.slice(0, -1);
+        }
         this.template = template;
         this.defaults = defaults || {};
         this.urlParams = {};
@@ -356,12 +525,19 @@
             url = actionUrl.slice(1);
           } else {
             url = this.template;
-            if (actionUrl && actionUrl.indexOf('/') !== 0) {
-              url = this.template + '/' + actionUrl;
-            } else if (actionUrl) {
-              url = actionUrl;
+            if (actionUrl) {
+              if (actionUrl[actionUrl.length - 1] == '/' && actionUrl.length !== 1)
+                actionUrl = actionUrl.slice(0, -1);
+              if (actionUrl[0] === '/') {
+                url = actionUrl;
+              } else {
+                url = this.template + '/' + actionUrl;
+              }
             }
-            url = sunRestConfig.baseUrl + url;
+            if (url[0] === '/')
+              url = sunRestConfig.baseUrl + url + '/';
+            else
+              url = url + '/';
           }
           angular.forEach(url.split(/\W/), function (param) {
             if (param === 'hasOwnProperty') {
@@ -387,7 +563,9 @@
             }
           }, this);
           // strip trailing slashes and set the url
-          url = url.replace(/\/+$/, '') || '/';
+          if (sunRestConfig.trailingSlashes === false) {
+            url = url.slice(0, url.length - 1) || '/';
+          }
           // then replace collapse `/.` if found in the last URL path segment before the query
           // E.g. `http://url.com/id./format?q=x` becomes `http://url.com/id.format?q=x`
           url = url.replace(/\/\.(?=\w+($|\?))/, '.');
@@ -419,6 +597,7 @@
         value: new this.constructor.mngrClass(this),
         enumerable: false
       });
+      this._setDefaults(data);
       if (!_.isEmpty(data)) {
         this.mngr.populate(data);
       }
@@ -426,6 +605,19 @@
     BaseModel.prototype.constructor = BaseModel;
     BaseModel.prototype.toJSON = function () {
       return this.mngr.toJSON();
+    };
+    BaseModel.prototype._setDefaults = function (data) {
+      this.mngr.populating = true;
+      _.forEach(this.mngr.schema.properties, function (prop, prop_name) {
+        var default_value = prop['default'];
+        if (default_value !== undefined && (data === undefined || prop_name in data)) {
+          if (angular.isFunction(default_value)) {
+            default_value = new default_value();
+          }
+          this[prop_name] = default_value;
+        }
+      }, this);
+      this.mngr.populating = false;
     };
     return BaseModel;
   });
@@ -498,6 +690,7 @@
         this.originalData = {};
         this.changedProperties = {};
         this.deleteFlag = false;
+        this.populating = false;
       }
       sunRestModelManager.prototype.NEW = 'new';
       sunRestModelManager.prototype.DELETED = 'deleted';
@@ -507,13 +700,15 @@
       sunRestModelManager.prototype.NORMALIZE_OUTGOING = 'outgoing';
       sunRestModelManager.prototype.populate = function (data) {
         var properties = this.schema.properties;
+        this.populating = true;
         data = this.normalizeData(data, this.NORMALIZE_INCOMING);
         angular.forEach(data, function (value, key) {
           if (properties[key] && properties[key].toNative) {
             value = properties[key].toNative(value);
           }
-          this['__' + key] = value;
+          this[key] = value;
         }, this.model);
+        this.populating = false;
         this.remoteFlag = true;
         this.modifyFlag = false;
         this.changedProperties = {};
@@ -635,6 +830,7 @@
           get: function () {
             /*jslint white:true*/
             var state;
+            this.i = (this.i || 0) + 1;
             if (!this.remoteFlag) {
               state = this.NEW;
             } else if (this.deleteFlag) {
@@ -678,9 +874,6 @@
     'sunRestBaseModel',
     'sunRestModelManager',
     function (sunUtils, sunRestBaseModel, sunRestModelManager) {
-      function DefaultChild(data) {
-        this.$super.constructor.call(this, data);
-      }
       /**
        * Name sunRestModelFactory
        * @param schema
@@ -689,33 +882,33 @@
        */
       function sunRestModelFactory(schema) {
         var Model, modelProperties = {};
-        Model = sunUtils.inherit(schema.inherit || DefaultChild, sunRestBaseModel);
-        _.forEach(schema.properties, function (value, key) {
+        Model = sunUtils.inherit(schema.inherit || {}, sunRestBaseModel);
+        _.forEach(schema.properties, function (prop, prop_name) {
           var customSetter = false,
             customGetter = false,
             customProperty = false,
             defaultGetMethod, defaultSetMethod;
-          if (Model.prototype[key]) {
+          if (Model.prototype[prop_name]) {
             customGetter = customSetter = customProperty = true;
           } else {
-            customGetter = !! schema.properties[key].getter;
-            customSetter = !! schema.properties[key].setter;
+            customGetter = !! schema.properties[prop_name].getter;
+            customSetter = !! schema.properties[prop_name].setter;
           }
-          modelProperties['_' + key] = {
+          modelProperties['_' + prop_name] = {
             get: function () {
-              return this['__' + key];
+              return this['__' + prop_name];
             },
             set: function (value) {
-              if (value !== this['__' + key]) {
-                if (value === this.mngr.originalData[key]) {
-                  delete this.mngr.changedProperties[key];
+              if (value != this['__' + prop_name] && !this.mngr.populating) {
+                if (value == this.mngr.originalData[prop_name]) {
+                  delete this.mngr.changedProperties[prop_name];
                   this.mngr.modifyFlag = Object.keys(this.mngr.changedProperties).length > 0;
                 } else {
-                  this.mngr.changedProperties[key] = true;
+                  this.mngr.changedProperties[prop_name] = true;
                   this.mngr.modifyFlag = true;
                 }
               }
-              this['__' + key] = value;
+              this['__' + prop_name] = value;
             }
           };
           if (customProperty) {
@@ -723,23 +916,26 @@
           }
           if (customGetter) {
             defaultGetMethod = function () {
-              return schema.properties[key].getter.call(this, this['_' + key]);
+              return schema.properties[prop_name].getter.call(this, this['_' + prop_name]);
             };
           } else {
             defaultGetMethod = function () {
-              return this['_' + key];
+              return this['_' + prop_name];
             };
           }
           if (customSetter) {
             defaultSetMethod = function (value) {
-              this['_' + key] = schema.properties[key].setter.call(this, value);
+              var res = schema.properties[prop_name].setter.call(this, value);
+              if (res !== undefined) {
+                this['_' + prop_name] = res;
+              }
             };
           } else {
             defaultSetMethod = function (value) {
-              this['_' + key] = value;
+              this['_' + prop_name] = value;
             };
           }
-          modelProperties[key] = {
+          modelProperties[prop_name] = {
             get: defaultGetMethod,
             set: defaultSetMethod
           };
@@ -764,20 +960,18 @@
         this.router = new sunRestRouter(schema.route);
         this.model = sunRestModelFactory(schema);
       };
-      sunRestCollection.prototype.find = function (params, postData, options) {
+      sunRestCollection.prototype.find = function (params, postData) {
         var promise, id, httpConfig, value, dataLocation, Model = this.model,
+          schema = this.schema,
           method = postData ? 'POST' : 'GET',
           isArray = true;
         params = params || {};
-        options = options || {};
         if (!_.isObject(params) && angular.isDefined(params)) {
           id = params;
           params = {};
           params[this.schema.routeIdProperty] = id;
         }
-        if (angular.isDefined(options.isArray)) {
-          isArray = options.isArray;
-        } else if (_.isObject(params) && params[this.schema.routeIdProperty]) {
+        if (_.isObject(params) && params[this.schema.routeIdProperty]) {
           isArray = false;
         }
         dataLocation = isArray === true ? this.schema.dataListLocation : this.schema.dataItemLocation;
@@ -788,7 +982,11 @@
         };
         this.router.buildConfig(httpConfig, params);
         //noinspection UnnecessaryLocalVariableJS
-        promise = $http(httpConfig).then(function (response) {
+        promise = this.schema.wrappedRequestInterceptor(this, httpConfig).then(function (newConfig) {
+          return $http(newConfig);
+        }).then(function (response) {
+          return schema.wrappedResponseInterceptor(this, response);
+        }).then(function (response) {
           var extracted, data = response.data,
             promise = value.$promise;
           if (data) {

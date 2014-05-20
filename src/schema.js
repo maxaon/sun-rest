@@ -56,21 +56,21 @@ sunRest.factory('sunRestSchema',
      * @methodOf sunRest.sunRestSchema
      */
     sunRestSchema.prototype.defaultProperties = {
-      name               : null,
-      route              : null,
-      idProperty         : sunRestConfig.modelIdProperty,
-      routeIdProperty    : null,
-      properties         : {},
-      relations          : {},
-      dataListLocation   : sunRestConfig.responseDataLocation,
-      dataItemLocation   : sunRestConfig.responseDataLocation,
-      autoParse          : true,
-      requestInterceptor : sunRestConfig.requestInterceptor,
+      name: null,
+      route: null,
+      idProperty: sunRestConfig.modelIdProperty,
+      routeIdProperty: null,
+      properties: {},
+      relations: {},
+      dataListLocation: sunRestConfig.responseDataListLocation,
+      dataItemLocation: sunRestConfig.responseDataItemLocation,
+      autoParse: true,
+      requestInterceptor: sunRestConfig.requestInterceptor,
       responseInterceptor: sunRestConfig.responseInterceptor,
-      isArray            : sunRestConfig.isArray,
-      paramDefaults      : {},
-      propertyModifier   : sunRestConfig.propertyModifier,
-      dataExtractor      : sunRestConfig.dataExtractor
+      isArray: sunRestConfig.isArray,
+      paramDefaults: {},
+      propertyModifier: sunRestConfig.propertyModifier,
+      dataExtractor: sunRestConfig.dataExtractor
     };
     /**
      * @name sunRest.sunRestSchema.extractRouteIdProperty
@@ -79,7 +79,7 @@ sunRest.factory('sunRestSchema',
      */
     sunRestSchema.prototype.extractRouteIdProperty = function (route) {
       var keys = route.match(/:\w[\w0-9-_]*/g);
-      if (keys.length === 0) {
+      if (keys === null || keys.length === 0) {
         return null;
       }
       return keys[keys.length - 1].slice(1);

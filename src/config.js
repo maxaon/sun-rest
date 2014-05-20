@@ -15,7 +15,8 @@
 sunRest.provider('sunRestConfig', function () {
   var
     baseUrl = '',
-    responseDataLocation = '',
+    responseDataListLocation = '',
+    responseDataItemLocation = '',
     modelIdProperty = 'id',
     updateMethod = 'PUT',
     updatePartial = false,
@@ -25,30 +26,46 @@ sunRest.provider('sunRestConfig', function () {
     responseInterceptor,
     responseErrorInterceptor,
     properties,
+    trailingSlashes = false,
     dataExtractor;
 
-
   properties = {
-    baseUrl                 : {
+    baseUrl: {
       get: function () {
         return baseUrl;
       },
       set: function (value) {
-        if (value.lastIndexOf('/') === (value.length - 1)) {
+        if (value[value.length - 1] === '/') {
           value = value.slice(0, -1);
         }
         baseUrl = value;
       }
     },
-    responseDataLocation    : {
+    trailingSlashes: {
       get: function () {
-        return responseDataLocation;
+        return trailingSlashes;
       },
       set: function (value) {
-        responseDataLocation = value;
+        trailingSlashes = bool(value);
       }
     },
-    modelIdProperty         : {
+    responseDataListLocation: {
+      get: function () {
+        return responseDataListLocation;
+      },
+      set: function (value) {
+        responseDataListLocation = value;
+      }
+    },
+    responseDataItemLocation: {
+      get: function () {
+        return responseDataItemLocation;
+      },
+      set: function (value) {
+        responseDataItemLocation = value;
+      }
+    },
+    modelIdProperty: {
       get: function () {
         return modelIdProperty;
       },
@@ -56,7 +73,7 @@ sunRest.provider('sunRestConfig', function () {
         modelIdProperty = value;
       }
     },
-    updateMethod            : {
+    updateMethod: {
       get: function () {
         return updateMethod;
       },
@@ -64,7 +81,7 @@ sunRest.provider('sunRestConfig', function () {
         updateMethod = value;
       }
     },
-    updatePartial           : {
+    updatePartial: {
       get: function () {
         return updatePartial;
       },
@@ -72,7 +89,7 @@ sunRest.provider('sunRestConfig', function () {
         updatePartial = value;
       }
     },
-    requestInterceptor      : {
+    requestInterceptor: {
       get: function () {
         return requestInterceptor;
       },
@@ -83,7 +100,7 @@ sunRest.provider('sunRestConfig', function () {
         requestInterceptor = value;
       }
     },
-    requestErrorInterceptor : {
+    requestErrorInterceptor: {
       get: function () {
         return requestErrorInterceptor;
       },
@@ -94,7 +111,7 @@ sunRest.provider('sunRestConfig', function () {
         requestErrorInterceptor = value;
       }
     },
-    responseInterceptor     : {
+    responseInterceptor: {
       get: function () {
         return responseInterceptor;
       },
@@ -105,6 +122,7 @@ sunRest.provider('sunRestConfig', function () {
         responseInterceptor = value;
       }
     },
+
     responseErrorInterceptor: {
       get: function () {
         return responseErrorInterceptor;
@@ -116,7 +134,7 @@ sunRest.provider('sunRestConfig', function () {
         responseErrorInterceptor = value;
       }
     },
-    propertyModifier        : {
+    propertyModifier: {
       get: function () {
         return propertyModifier;
       },
@@ -124,7 +142,7 @@ sunRest.provider('sunRestConfig', function () {
         propertyModifier = value;
       }
     },
-    dataExtractor           : {
+    dataExtractor: {
       get: function () {
         return dataExtractor;
       },
