@@ -14,14 +14,14 @@ function userSchema(override) {
   return _.merge(
     {},
     {
-      name      : 'User',
-      route     : '/controllers/:id',
+      name: 'User',
+      route: '/controllers/:id',
       properties: {
-        id         : {},
-        title      : {},
+        id: {},
+        title: {},
         description: {},
         licenseType: {},
-        devices    : {}
+        devices: {}
       }
     },
     override
@@ -38,10 +38,10 @@ function model(id, override) {
 
   return _.merge({},
     {
-      title      : 'Home ' + id,
+      title: 'Home ' + id,
       description: 'Controller in the home',
-      devices    : [1, 2, 3],
-      id         : id,
+      devices: [1, 2, 3],
+      id: id,
       licenseType: 1
     },
     override);
@@ -105,7 +105,16 @@ describe('Rest creation', function () {
     expect(obj.mngr.state).toBe(obj.mngr.LOADED);
     expect(obj.title).toBe('ServerSideTitle');
   });
-it('should copy model data', function () {
+  it('should delete object object', function () {
+    var globalRepo = RestRepository.create(userSchema());
+    $httpBackend.expect('GET', '/controllers/12').respond(model());
+    var obj = globalRepo.find(12);
+    $httpBackend.flush();
+    $httpBackend.expect('DELETE', '/controllers/12').respond(204);
+    obj.mngr.remove();
+    $httpBackend.flush();
+  });
+  it('should copy model data', function () {
     var repo = RestRepository.create(userSchema());
     $httpBackend.expect('GET', '/controllers').respond([model()]);
     var obj = repo.find();
@@ -176,10 +185,10 @@ describe('Rest custom creation', function () {
     }
     }));
     model = {
-      Title      : 'Home 12',
+      Title: 'Home 12',
       Description: 'Controller in the home',
-      Devices    : [1, 2, 3],
-      Id         : 12,
+      Devices: [1, 2, 3],
+      Id: 12,
       LicenseType: 1
     };
     $httpBackend.expect('GET', '/controllers/12').respond(model);
