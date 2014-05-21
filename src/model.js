@@ -198,7 +198,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestCon
   };
   sunRestModelManager.prototype.remove = function (params) {
     params = angular.extend({}, this.schema.paramDefaults.remove, params);
-    return this.simpleRequest('DELETE', params);
+    return this.simpleRequest('DELETE', params, this.model);
   };
   sunRestModelManager.prototype.objectRequest = function (method, isArray, params, data) {
     var promise,
