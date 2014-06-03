@@ -15,7 +15,8 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
       Model = this.model,
       schema = this.schema,
       method = postData ? 'POST' : 'GET',
-      isArray = true;
+      isArray = true,
+      self = this;
     params = params || {};
     if (!_.isObject(params) && angular.isDefined(params)) {
       id = params;
@@ -38,7 +39,7 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
         return $http(newConfig);
       })
       .then(function (response) {
-        return schema.wrappedResponseInterceptor(this, response)
+        return schema.wrappedResponseInterceptor(self, response);
       })
       .then(function (response) {
         var extracted,

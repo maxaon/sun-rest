@@ -371,7 +371,6 @@
        *
        * @property {string}  name
        * @property {string}  route
-       * @property {string}  idProperty
        * @property {string}  routeIdProperty
        * @property {PropertyDescription[]}  properties
        * @property {object}  relations
@@ -387,6 +386,9 @@
        */
       function sunRestSchema(properties) {
         angular.extend(this, this.defaultProperties, properties);
+        if (!this.route) {
+          throw new Error('Schema does not have route property');
+        }
         if (!this.routeIdProperty) {
           this.routeIdProperty = this.extractRouteIdProperty(this.route);
         }
@@ -402,7 +404,6 @@
       sunRestSchema.prototype.defaultProperties = {
         name: null,
         route: null,
-        idProperty: sunRestConfig.modelIdProperty,
         routeIdProperty: null,
         properties: {},
         relations: {},
@@ -804,19 +805,20 @@
       sunRestModelManager.prototype.simpleRequest = function (method, params, data, path) {
         var promise, httpConfig = {
             method: method
-          }, schema = this.schema;
+          }, schema = this.schema,
+          self = this;
         if (hasBody(method)) {
           httpConfig.data = data;
         }
         params = params || {};
         if (data) {
-          params[this.schema.idProperty] = data[this.schema.idProperty];
+          params[this.schema.routeIdProperty] = data[this.schema.routeIdProperty];
         }
         this.route.buildConfig(httpConfig, angular.extend({}, this.extractParams(data), params));
         promise = this.schema.wrappedRequestInterceptor(this, httpConfig).then(function (newConfig) {
           return $http(newConfig);
         }).then(function (response) {
-          return schema.wrappedResponseInterceptor(this, response, path);
+          return schema.wrappedResponseInterceptor(self, response, path);
         });
         if (angular.isDefined(path)) {
           promise = promise.then(function (response) {
@@ -964,7 +966,8 @@
         var promise, id, httpConfig, value, dataLocation, Model = this.model,
           schema = this.schema,
           method = postData ? 'POST' : 'GET',
-          isArray = true;
+          isArray = true,
+          self = this;
         params = params || {};
         if (!_.isObject(params) && angular.isDefined(params)) {
           id = params;
@@ -985,7 +988,7 @@
         promise = this.schema.wrappedRequestInterceptor(this, httpConfig).then(function (newConfig) {
           return $http(newConfig);
         }).then(function (response) {
-          return schema.wrappedResponseInterceptor(this, response);
+          return schema.wrappedResponseInterceptor(self, response);
         }).then(function (response) {
           var extracted, data = response.data,
             promise = value.$promise;

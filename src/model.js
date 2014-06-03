@@ -244,23 +244,24 @@ sunRest.factory('sunRestModelManager', function ($http, $q, sunUtils, sunRestCon
   sunRestModelManager.prototype.simpleRequest = function (method, params, data, path) {
     var promise,
       httpConfig = {method: method},
-      schema = this.schema;
+      schema = this.schema,
+      self = this;
 
     if (hasBody(method)) {
       httpConfig.data = data;
     }
     params = params || {};
     if (data) {
-      params[this.schema.idProperty] = data[this.schema.idProperty];
+      params[this.schema.routeIdProperty] = data[this.schema.routeIdProperty];
     }
 
-    this.route.buildConfig(httpConfig,
-      angular.extend({}, this.extractParams(data), params));
+    this.route.buildConfig(httpConfig, angular.extend({}, this.extractParams(data), params));
+
     promise = this.schema.wrappedRequestInterceptor(this, httpConfig)
       .then(function (newConfig) {
         return $http(newConfig);
       }).then(function (response) {
-        return schema.wrappedResponseInterceptor(this, response, path)
+        return schema.wrappedResponseInterceptor(self, response, path);
       });
     if (angular.isDefined(path)) {
       promise = promise.then(function (response) {

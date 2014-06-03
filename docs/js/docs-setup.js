@@ -44,7 +44,7 @@ NG_DOCS={
       "shortName": "sunRest.sunRestSchema",
       "type": "service",
       "moduleName": "sunRest",
-      "keywords": "api autoparse class dataextractor dataitemlocation datalistlocation idproperty isarray paramdefaults properties propertymodifier relations requestinterceptor responseinterceptor route routeidproperty schema service sunrest sunrest-sunrestschema-page sunrestschema"
+      "keywords": "api autoparse class dataextractor dataitemlocation datalistlocation isarray paramdefaults properties propertymodifier relations requestinterceptor responseinterceptor route routeidproperty schema service sunrest sunrest-sunrestschema-page sunrestschema"
     },
     {
       "section": "api",
