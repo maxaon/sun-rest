@@ -6,9 +6,10 @@ sunRest.factory('sunRestSchema',
    * @param $q
    * @param sunUtils
    * @param {sunRestConfig} sunRestConfig
+   * @param {sunRestRouter} sunRestRouter
    * @returns {sunRestSchema}
    */
-    function ($q, sunUtils, sunRestConfig) {
+    function ($q, sunUtils, sunRestConfig, sunRestRouter) {
     /**
      * @ngdoc object
      * @name sunRest.sunRestSchema:PropertyDescription
@@ -42,7 +43,7 @@ sunRest.factory('sunRestSchema',
     function sunRestSchema(properties) {
       angular.extend(this, this.defaultProperties, properties);
       if (!this.route) {
-        throw new Error('Schema does not have route property')
+        throw new Error('Schema does not have route property');
       }
       if (!this.routeIdProperty) {
         this.routeIdProperty = this.extractRouteIdProperty(this.route);
@@ -50,6 +51,7 @@ sunRest.factory('sunRestSchema',
       if (this.propertyModifier) {
         this.applyPropertyModifier(this.properties, this.propertyModifier);
       }
+      this.router = new sunRestRouter(this.route);
     }
 
     /**
@@ -60,6 +62,7 @@ sunRest.factory('sunRestSchema',
     sunRestSchema.prototype.defaultProperties = {
       name: null,
       route: null,
+      router: null,
       routeIdProperty: null,
       properties: {},
       relations: {},

@@ -39,7 +39,12 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
       replace(/%2B/gi, '+');
   }
 
-
+  /**
+   * @class sunRestRouter
+   * @name sunRest.sunRestRouter
+   * @param template
+   * @param defaults
+   */
   function sunRestRouter(template, defaults) {
     if (template) {
       if (template[template.length - 1] === '/')
