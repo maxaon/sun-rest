@@ -353,7 +353,8 @@
     '$q',
     'sunUtils',
     'sunRestConfig',
-    function ($q, sunUtils, sunRestConfig) {
+    'sunRestRouter',
+    function ($q, sunUtils, sunRestConfig, sunRestRouter) {
       /**
        * @ngdoc object
        * @name sunRest.sunRestSchema:PropertyDescription
@@ -395,6 +396,7 @@
         if (this.propertyModifier) {
           this.applyPropertyModifier(this.properties, this.propertyModifier);
         }
+        this.router = new sunRestRouter(this.route);
       }
       /**
        * @name sunRest.sunRestSchema.defaultProperties
@@ -404,6 +406,7 @@
       sunRestSchema.prototype.defaultProperties = {
         name: null,
         route: null,
+        router: null,
         routeIdProperty: null,
         properties: {},
         relations: {},
@@ -506,7 +509,12 @@
       function encodeUriSegment(val) {
         return encodeUriQuery(val, true).replace(/%26/gi, '&').replace(/%3D/gi, '=').replace(/%2B/gi, '+');
       }
-
+      /**
+       * @class sunRestRouter
+       * @name sunRest.sunRestRouter
+       * @param template
+       * @param defaults
+       */
       function sunRestRouter(template, defaults) {
         if (template) {
           if (template[template.length - 1] === '/')
@@ -585,9 +593,34 @@
       return sunRestRouter;
     }
   ]);
+  sunRest.factory('sunRestRepository', [
+    'sunRestSchema',
+    'sunRestCollection',
+    function (sunRestSchema, sunRestCollection) {
+      return {
+        resources: {},
+        create: function (name, schema) {
+          if (!schema) {
+            if (!_.isObject(name)) {
+              throw new Error('Wrong repository call format');
+            }
+            schema = name;
+          }
+          name = schema['name'];
+          schema = new sunRestSchema(schema);
+          this.resources[name] = new sunRestCollection(schema);
+          return this.resources[name];
+        },
+        get: function (name) {
+          return this.resources[name];
+        }
+      };
+    }
+  ]);
   sunRest.factory('sunRestBaseModel', function () {
     /**
      * @ngdoc object
+     * @class
      * @name sunRest.sunRestBaseModel
      * @property {string} ppp
      * @typedef {object} sunRestBaseModel
@@ -598,7 +631,7 @@
         value: new this.constructor.mngrClass(this),
         enumerable: false
       });
-      this._setDefaults(data);
+      //    this._setDefaults(data);
       if (!_.isEmpty(data)) {
         this.mngr.populate(data);
       }
@@ -625,10 +658,11 @@
   sunRest.factory('sunRestModelManager', [
     '$http',
     '$q',
+    '$injector',
     'sunUtils',
     'sunRestConfig',
     'sunRestRouter',
-    function ($http, $q, sunUtils, sunRestConfig, sunRestRouter) {
+    function ($http, $q, $injector, sunUtils, sunRestConfig, sunRestRouter) {
       //region Dotted path
       var MEMBER_NAME_REGEX = /^(\.[a-zA-Z_$][0-9a-zA-Z_$]*)+$/;
 
@@ -814,7 +848,7 @@
         if (data) {
           params[this.schema.routeIdProperty] = data[this.schema.routeIdProperty];
         }
-        this.route.buildConfig(httpConfig, angular.extend({}, this.extractParams(data), params));
+        this.schema.router.buildConfig(httpConfig, angular.extend({}, this.extractParams(data), params));
         promise = this.schema.wrappedRequestInterceptor(this, httpConfig).then(function (newConfig) {
           return $http(newConfig);
         }).then(function (response) {
@@ -866,6 +900,45 @@
         sunUtils.inherit(child, sunRestModelManager);
         child.prototype.schema = schema;
         child.prototype.modelClass = model;
+        if (schema.relations) {
+          var related = {}, relatedMngr = {};
+          _.forEach(schema.relations, function (relationConfig, relationName) {
+            if (!(relationConfig.service || relationConfig.resource)) {
+              throw new Error('Inappropriate configuration of related item. Resource or service should be speccified');
+            }
+            if (relationConfig.isArray) {
+              throw new Error('Not implemented to get arrays');
+            }
+            relatedMngr[relationName] = {
+              get: function () {
+                var collection;
+                if (relationConfig.service) {
+                  collection = $injector.get(relationConfig.service);
+                  if (!collection) {
+                    throw new Error('Unable to get service "' + relationConfig.service + '"');
+                  }
+                } else {
+                  collection = $injector.get('sunRestRepository').get(relationConfig.resource);
+                  if (!collection) {
+                    throw new Error('Unable to get resource "' + relationConfig.resource + '"');
+                  }
+                }
+                return collection;
+              }
+            };
+            related[relationName] = {
+              get: function () {
+                if (relationConfig.isArray) {
+                  throw new Error('is Array not implemented');
+                }
+                var mngr = this.__mngr;
+                var property = relationConfig.property || relationName;
+                var obj = mngr.relatedMngr[relationName].find(mngr.model[property]);
+                return obj;
+              }
+            };
+          });
+        }
         return child;
       };
       return sunRestModelManager;
@@ -955,27 +1028,26 @@
     'sunUtils',
     'sunRestConfig',
     'sunRestModelFactory',
-    'sunRestRouter',
-    function ($q, $http, sunUtils, sunRestConfig, sunRestModelFactory, sunRestRouter) {
+    function ($q, $http, sunUtils, sunRestConfig, sunRestModelFactory) {
       var sunRestCollection = function (schema) {
         this.schema = schema;
-        this.router = new sunRestRouter(schema.route);
         this.model = sunRestModelFactory(schema);
       };
       sunRestCollection.prototype.find = function (params, postData) {
+        return this.query(params, postData);
+      };
+      sunRestCollection.prototype.query = function (params, postData, isArray) {
         var promise, id, httpConfig, value, dataLocation, Model = this.model,
           schema = this.schema,
           method = postData ? 'POST' : 'GET',
-          isArray = true,
           self = this;
-        params = params || {};
         if (!_.isObject(params) && angular.isDefined(params)) {
           id = params;
           params = {};
           params[this.schema.routeIdProperty] = id;
         }
-        if (_.isObject(params) && params[this.schema.routeIdProperty]) {
-          isArray = false;
+        if (isArray === undefined) {
+          isArray = !(_.isObject(params) && params[this.schema.routeIdProperty]);
         }
         dataLocation = isArray === true ? this.schema.dataListLocation : this.schema.dataItemLocation;
         value = isArray ? [] : new Model();
@@ -983,7 +1055,7 @@
           method: method,
           data: postData
         };
-        this.router.buildConfig(httpConfig, params);
+        this.schema.router.buildConfig(httpConfig, params);
         //noinspection UnnecessaryLocalVariableJS
         promise = this.schema.wrappedRequestInterceptor(this, httpConfig).then(function (newConfig) {
           return $http(newConfig);
@@ -1016,31 +1088,11 @@
         value.$resolved = false;
         return value;
       };
-      return sunRestCollection;
-    }
-  ]);
-  sunRest.factory('sunRestRepository', [
-    'sunRestSchema',
-    'sunRestCollection',
-    function (sunRestSchema, sunRestCollection) {
-      return {
-        resources: {},
-        create: function (name, schema) {
-          if (!schema) {
-            if (!_.isObject(name)) {
-              throw new Error('Wrong repository call format');
-            }
-            schema = name;
-          }
-          name = schema['name'];
-          schema = new sunRestSchema(schema);
-          this.resources[name] = new sunRestCollection(schema);
-          return this.resources[name];
-        },
-        get: function (name) {
-          return this.resources[name];
-        }
+      sunRestCollection.prototype.create = function (data) {
+        var obj = new this.model(data);
+        return obj;
       };
+      return sunRestCollection;
     }
   ]);
 }(angular));

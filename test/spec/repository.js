@@ -220,3 +220,43 @@ describe('Repository creation with configuration', function () {
     });
   });
 });
+ddescribe('Repository with related objects', function () {
+  beforeEach(module('sun.rest'));
+  it('should retrive related repository by collection', function () {
+    module(function ($provide) {
+      $provide.factory('PrimaryCollection', function (sunRestRepository) {
+        return sunRestRepository.create(userSchema({
+          properties: {
+            billId: {}
+          },
+          relations: {
+            bill: {
+              service: 'BillsCollection',
+              property: 'billId'
+            }
+          }
+        }));
+      });
+      $provide.factory('BillsCollection', function (sunRestRepository) {
+        return sunRestRepository.create('bills', {
+          route: '/bills/:id',
+          properties: {
+            id: {},
+            name: {}
+          }
+        });
+      });
+
+
+    });
+    inject(function ($httpBackend, PrimaryCollection) {
+      $httpBackend.expect('GET', '/controllers/12').respond(model());
+      var obj = PrimaryCollection.find(12);
+      $httpBackend.flush();
+//      var bill = obj.mngr.related.bill
+
+
+    })
+
+  })
+});
