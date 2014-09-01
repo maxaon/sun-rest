@@ -17,21 +17,20 @@ sunRest.factory('sunRestModelFactory', function (sunUtils, sunRestBaseModel, sun
       var customSetter = false,
         customGetter = false,
         customProperty = false,
-        defaultGetMethod,
-        defaultSetMethod;
+        properties = {};
       if (Model.prototype[prop_name]) {
         customGetter = customSetter = customProperty = true;
       } else {
-        customGetter = !!schema.properties[prop_name].getter;
-        customSetter = !!schema.properties[prop_name].setter;
+        customGetter = !!prop.getter;
+        customSetter = !!prop.setter;
       }
       modelProperties['_' + prop_name] = {
         get: function () {
           return this['__' + prop_name];
         },
         set: function (value) {
-          if (value != this['__' + prop_name] && !this.mngr.populating) {
-            if (value == this.mngr.originalData[prop_name]) {
+          if (value !== this['__' + prop_name] && !this.mngr.populating) {
+            if (value === this.mngr.originalData[prop_name]) {
               delete this.mngr.changedProperties[prop_name];
               this.mngr.modifyFlag = Object.keys(this.mngr.changedProperties).length > 0;
             } else {
@@ -45,33 +44,34 @@ sunRest.factory('sunRestModelFactory', function (sunUtils, sunRestBaseModel, sun
       if (customProperty) {
         return;
       }
-
-      if (customGetter) {
-        defaultGetMethod = function () {
-          return schema.properties[prop_name].getter.call(this, this['_' + prop_name]);
-        };
-      } else {
-        defaultGetMethod = function () {
-          return this['_' + prop_name];
-        };
+      if (prop.getter !== null) {
+        if (customGetter) {
+          properties.get = function () {
+            return schema.properties[prop_name].getter.call(this, this['_' + prop_name]);
+          };
+        } else {
+          properties.get = function () {
+            return this['_' + prop_name];
+          };
+        }
       }
-      if (customSetter) {
-        defaultSetMethod = function (value) {
-          var res = schema.properties[prop_name].setter.call(this, value);
-          if (res !== undefined) {
-            this['_' + prop_name] = res;
-          }
-        };
-      } else {
-        defaultSetMethod = function (value) {
-          this['_' + prop_name] = value;
-        };
+      if (prop.setter !== null) {
+        if (customSetter) {
+          properties.set = function (value) {
+            var res = schema.properties[prop_name].setter.call(this, value);
+            if (res !== undefined) {
+              this['_' + prop_name] = res;
+            }
+          };
+        } else {
+          properties.set = function (value) {
+            this['_' + prop_name] = value;
+          };
+        }
       }
-
-      modelProperties[prop_name] = {
-        get: defaultGetMethod,
-        set: defaultSetMethod
-      };
+      if (properties.set || properties.get) {
+        modelProperties[prop_name] = properties;
+      }
     });
     Object.defineProperties(Model.prototype, modelProperties);
 

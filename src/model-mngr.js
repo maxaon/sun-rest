@@ -46,7 +46,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
   function sunRestModelManager(model, schema, modelClass) {
     // TODO Try to remove dependency
     Object.defineProperty(this, 'model', {
-      value     : model,
+      value: model,
       enumerable: false
     });
 
@@ -84,7 +84,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
     data = this.normalizeData(data, this.NORMALIZE_INCOMING);
     angular.forEach(data, function (value, key) {
       if (properties[key] && properties[key].toNative) {
-        value = properties[key].toNative(value);
+        value = properties[key].toNative.call(this, value);
       }
       this[key] = value;
     }, this.model);
