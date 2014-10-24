@@ -1,14 +1,64 @@
 'use strict';
 /* global sunRest */
 sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfig, sunRestModelFactory) {
+  function normalizeOptions(options, defaults) {
+    if (_.isBoolean(options)) {
+      options = {
+        isArray: options
+      };
+    }
+    options = options || {};
+    return _.defaults(options, defaults);
+  }
+
   var sunRestCollection = function (schema) {
     this.schema = schema;
     this.model = sunRestModelFactory(schema);
   };
-  sunRestCollection.prototype.find = function (params, postData) {
-    return this.query(params, postData);
+
+  sunRestCollection.prototype.find = function (params, options) {
+    options = normalizeOptions(options, {
+      method: "GET",
+      params: params
+    });
+    return this.request(options);
   };
-  sunRestCollection.prototype.query = function (params, postData, isArray) {
+  sunRestCollection.prototype.find.one = function (data, params, options) {
+    options = normalizeOptions(options, {
+      isArray: false
+    });
+    return this.find(options);
+  };
+  sunRestCollection.prototype.find.all = function (data, params, options) {
+    options = normalizeOptions(options, {
+      isArray: true
+    });
+    return this.find(options);
+  };
+
+  sunRestCollection.prototype.query = function (data, params, options) {
+    options = normalizeOptions(options, {
+      method: "POST",
+      data: data,
+      params: params
+    });
+    return this.request(options);
+  };
+  sunRestCollection.prototype.query.one = function (data, params, options) {
+    options = normalizeOptions(options, {
+      isArray: false
+    });
+    return this.query(options);
+  };
+  sunRestCollection.prototype.query.all = function (data, params, options) {
+    options = normalizeOptions(options, {
+      isArray: true
+    });
+    return this.query(options);
+  };
+
+  sunRestCollection.prototype.request = function (options) {
+    options = options || {};
     var promise,
       id,
       httpConfig,
@@ -16,14 +66,18 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
       dataLocation,
       Model = this.model,
       schema = this.schema,
-      method = postData ? 'POST' : 'GET',
-      self = this;
+      method = options.method ? options.method : options.data ? 'POST' : 'GET',
+      self = this,
+      data = options.data,
+      params = options.params,
+      isArray = options.isArray;
 
     if (!_.isObject(params) && angular.isDefined(params)) {
       id = params;
       params = {};
       params[this.schema.routeIdProperty] = id;
     }
+
     if (isArray === undefined) {
       isArray = !(_.isObject(params) && (params[this.schema.routeIdProperty]));
     }
@@ -32,8 +86,8 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
     dataLocation = (isArray === true ? this.schema.dataListLocation : this.schema.dataItemLocation);
 
     value = isArray ? [] : (new Model());
-    httpConfig = {method: method, data: postData};
-    this.schema.router.buildConfig(httpConfig, params);
+    httpConfig = this.schema.router.buildConfig({method: method, data: data}, params);
+
 
     //noinspection UnnecessaryLocalVariableJS
     promise = this.schema.wrappedRequestInterceptor(this, httpConfig)
@@ -70,6 +124,20 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
         value.$resolved = true;
         return $q.reject(response);
       });
+    if (options.populateRelated) {
+      promise = promise.then(function (resp) {
+        var prom = _(isArray ? resp.resource : [resp.resource])
+          .map(function (obj) {
+            return obj.mngr.populateRelated(!_.isBoolean(options.populateRelated) ? options.populateRelated : undefined);
+          })
+          .value();
+
+        return $q.all(prom)
+          .then(function () {
+            return resp;
+          });
+      });
+    }
 
     value.$promise = promise;
     value.$resolved = false;

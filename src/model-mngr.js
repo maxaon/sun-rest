@@ -26,6 +26,23 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
     return obj;
   }
 
+  function getCollection(relationConfig) {
+    var collection;
+    if (relationConfig.service) {
+      collection = $injector.get(relationConfig.service);
+      if (!collection) {
+        throw new Error('Unable to get service "' + relationConfig.service + '"');
+      }
+    }
+    else {
+      collection = $injector.get('sunRestRepository').get(relationConfig.resource);
+      if (!collection) {
+        throw new Error('Unable to get resource "' + relationConfig.resource + '"');
+      }
+    }
+    return collection;
+  }
+
   //endregion
   /**
    * @ngdoc service
@@ -230,12 +247,52 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
     }
     return promise;
   };
+
+  sunRestModelManager.prototype.populateRelated = function (populateOptions) {
+    var mngr = this;
+    populateOptions = populateOptions || _.keys(this.schema.relations);
+    var prom = _(populateOptions)
+      .map(function (name, opts) {
+        var collection,
+          relationConfig = mngr.schema.relations[name],
+          url,
+          options;
+        if (!relationConfig) {
+          throw new Error("Unknown relation '" + name + "'");
+        }
+        collection = getCollection(relationConfig);
+        options = !_.isArray(populateOptions) ? opts : {};
+        if (relationConfig.absolute) {
+          url = collection.schema.router.template;
+        }
+        else {
+          var params = {};
+          var routeProp = mngr.model[mngr.schema.routeIdProperty];
+          if (routeProp) {
+            params[mngr.schema.routeIdProperty] = routeProp;
+          }
+
+          var baseUrl = mngr.schema.router.buildConfig({}, params).url;
+          url = (baseUrl + "/" + collection.schema.router.template).replace("//", "/");
+        }
+        options.params = options.params || {};
+        options.params.url = options.params.url || url;
+        return collection.request(options).$promise.then(function (resp) {
+          mngr.model[relationConfig.to || name] = resp.resource;
+          return resp;
+        });
+
+      })
+      .value();
+
+    return $q.all(prom);
+  };
+
   Object.defineProperties(sunRestModelManager.prototype, {
     state: {
       get: function () {
         /*jslint white:true*/
         var state;
-        this.i = (this.i || 0) + 1
 
         if (!this.remoteFlag) {
           state = this.NEW;
@@ -291,20 +348,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
         }
         relatedMngr[relationName] = {
           get: function () {
-            var collection;
-            if (relationConfig.service) {
-              collection = $injector.get(relationConfig.service);
-              if (!collection) {
-                throw new Error('Unable to get service "' + relationConfig.service + '"');
-              }
-            }
-            else {
-              collection = $injector.get('sunRestRepository').get(relationConfig.resource);
-              if (!collection) {
-                throw new Error('Unable to get resource "' + relationConfig.resource + '"');
-              }
-            }
-            return collection;
+
           }
         };
 
@@ -321,6 +365,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
           }
         };
       });
+
 
     }
 

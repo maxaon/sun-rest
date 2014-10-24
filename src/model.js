@@ -12,12 +12,12 @@ sunRest.factory('sunRestBaseModel', function () {
   var BaseModel = function (data) {
     // Manager can not be properly copied by `angular.copy`
     Object.defineProperty(this, 'mngr', {
-      value     : new this.constructor.mngrClass(this),
+      value: new this.constructor.mngrClass(this),
       enumerable: false
     });
 //    this._setDefaults(data);
     if (!_.isEmpty(data)) {
-      this.mngr.populate(data);
+      _.extend(this, data);
     }
   };
 

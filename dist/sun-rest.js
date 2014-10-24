@@ -1,4 +1,4 @@
-/*! sun-rest v0.0.4 by maxaon*/
+/*! sun-rest v0.0.5 by maxaon*/
 (function (angular, undefined) {
   'use strict';
   angular.module('sun.utils', []).service('sunUtils', function sunUtils() {
@@ -73,133 +73,133 @@
   }
 
   function $watchCollection(objGetter, listener) {
-    var self = this;
-    // the current value, updated on each dirty-check run
-    var newValue;
-    // a shallow copy of the newValue from the last dirty-check run,
-    // updated to match newValue during dirty-check run
-    var oldValue;
-    // a shallow copy of the newValue from when the last change happened
-    var veryOldValue;
-    // only track veryOldValue if the listener is asking for it
-    var trackVeryOldValue = listener.length > 1;
-    var changeDetected = 0;
-    //  var objGetter = $parse(obj);
-    var internalArray = [];
-    var internalObject = {};
-    var initRun = true;
-    var oldLength = 0;
+      var self = this;
+      // the current value, updated on each dirty-check run
+      var newValue;
+      // a shallow copy of the newValue from the last dirty-check run,
+      // updated to match newValue during dirty-check run
+      var oldValue;
+      // a shallow copy of the newValue from when the last change happened
+      var veryOldValue;
+      // only track veryOldValue if the listener is asking for it
+      var trackVeryOldValue = listener.length > 1;
+      var changeDetected = 0;
+      //  var objGetter = $parse(obj);
+      var internalArray = [];
+      var internalObject = {};
+      var initRun = true;
+      var oldLength = 0;
 
-    function $watchCollectionWatch() {
-      newValue = objGetter(self);
-      var newLength, key;
-      if (!isObject(newValue)) {
-        // if primitive
-        if (oldValue !== newValue) {
-          oldValue = newValue;
-          changeDetected++;
-        }
-      } else if (isArrayLike(newValue)) {
-        if (oldValue !== internalArray) {
-          // we are transitioning from something which was not an array into array.
-          oldValue = internalArray;
-          oldLength = oldValue.length = 0;
-          changeDetected++;
-        }
-        newLength = newValue.length;
-        if (oldLength !== newLength) {
-          // if lengths do not match we need to trigger change notification
-          changeDetected++;
-          oldValue.length = oldLength = newLength;
-        }
-        // copy the items to oldValue and look for changes.
-        for (var i = 0; i < newLength; i++) {
-          var bothNaN = oldValue[i] !== oldValue[i] && newValue[i] !== newValue[i];
-          if (!bothNaN && oldValue[i] !== newValue[i]) {
-            changeDetected++;
-            oldValue[i] = newValue[i];
-          }
-        }
-      } else {
-        if (oldValue !== internalObject) {
-          // we are transitioning from something which was not an object into object.
-          oldValue = internalObject = {};
-          oldLength = 0;
-          changeDetected++;
-        }
-        // copy the items to oldValue and look for changes.
-        newLength = 0;
-        for (key in newValue) {
-          if (newValue.hasOwnProperty(key)) {
-            newLength++;
-            if (oldValue.hasOwnProperty(key)) {
-              if (oldValue[key] !== newValue[key]) {
-                changeDetected++;
-                oldValue[key] = newValue[key];
-              }
-            } else {
-              oldLength++;
-              oldValue[key] = newValue[key];
-              changeDetected++;
-            }
-          }
-        }
-        if (oldLength > newLength) {
-          // we used to have more keys, need to find them and destroy them.
-          changeDetected++;
-          for (key in oldValue) {
-            if (oldValue.hasOwnProperty(key) && !newValue.hasOwnProperty(key)) {
-              oldLength--;
-              delete oldValue[key];
-            }
-          }
-        }
-      }
-      return changeDetected;
-    }
-
-    function $watchCollectionAction() {
-      if (initRun) {
-        initRun = false;
-        listener(newValue, newValue, self);
-      } else {
-        listener(newValue, veryOldValue, self);
-      }
-      // make a copy for the next time a collection is changed
-      if (trackVeryOldValue) {
+      function $watchCollectionWatch() {
+        newValue = objGetter(self);
+        var newLength, key;
         if (!isObject(newValue)) {
-          //primitive
-          veryOldValue = newValue;
+          // if primitive
+          if (oldValue !== newValue) {
+            oldValue = newValue;
+            changeDetected++;
+          }
         } else if (isArrayLike(newValue)) {
-          veryOldValue = new Array(newValue.length);
-          for (var i = 0; i < newValue.length; i++) {
-            veryOldValue[i] = newValue[i];
+          if (oldValue !== internalArray) {
+            // we are transitioning from something which was not an array into array.
+            oldValue = internalArray;
+            oldLength = oldValue.length = 0;
+            changeDetected++;
+          }
+          newLength = newValue.length;
+          if (oldLength !== newLength) {
+            // if lengths do not match we need to trigger change notification
+            changeDetected++;
+            oldValue.length = oldLength = newLength;
+          }
+          // copy the items to oldValue and look for changes.
+          for (var i = 0; i < newLength; i++) {
+            var bothNaN = oldValue[i] !== oldValue[i] && newValue[i] !== newValue[i];
+            if (!bothNaN && oldValue[i] !== newValue[i]) {
+              changeDetected++;
+              oldValue[i] = newValue[i];
+            }
           }
         } else {
-          // if object
-          veryOldValue = {};
-          for (var key in newValue) {
-            if (hasOwnProperty.call(newValue, key)) {
-              veryOldValue[key] = newValue[key];
+          if (oldValue !== internalObject) {
+            // we are transitioning from something which was not an object into object.
+            oldValue = internalObject = {};
+            oldLength = 0;
+            changeDetected++;
+          }
+          // copy the items to oldValue and look for changes.
+          newLength = 0;
+          for (key in newValue) {
+            if (newValue.hasOwnProperty(key)) {
+              newLength++;
+              if (oldValue.hasOwnProperty(key)) {
+                if (oldValue[key] !== newValue[key]) {
+                  changeDetected++;
+                  oldValue[key] = newValue[key];
+                }
+              } else {
+                oldLength++;
+                oldValue[key] = newValue[key];
+                changeDetected++;
+              }
+            }
+          }
+          if (oldLength > newLength) {
+            // we used to have more keys, need to find them and destroy them.
+            changeDetected++;
+            for (key in oldValue) {
+              if (oldValue.hasOwnProperty(key) && !newValue.hasOwnProperty(key)) {
+                oldLength--;
+                delete oldValue[key];
+              }
+            }
+          }
+        }
+        return changeDetected;
+      }
+
+      function $watchCollectionAction() {
+        if (initRun) {
+          initRun = false;
+          listener(newValue, newValue, self);
+        } else {
+          listener(newValue, veryOldValue, self);
+        }
+        // make a copy for the next time a collection is changed
+        if (trackVeryOldValue) {
+          if (!isObject(newValue)) {
+            //primitive
+            veryOldValue = newValue;
+          } else if (isArrayLike(newValue)) {
+            veryOldValue = new Array(newValue.length);
+            for (var i = 0; i < newValue.length; i++) {
+              veryOldValue[i] = newValue[i];
+            }
+          } else {
+            // if object
+            veryOldValue = {};
+            for (var key in newValue) {
+              if (hasOwnProperty.call(newValue, key)) {
+                veryOldValue[key] = newValue[key];
+              }
             }
           }
         }
       }
+      return this.$watch($watchCollectionWatch, $watchCollectionAction);
     }
-    return this.$watch($watchCollectionWatch, $watchCollectionAction);
-  }
-  /**
-   * @ngdoc object
-   * @name sunRest.sunRestConfigProvider
-   * @typedef  {object} RestConfigProvider
-   * @property {bool} strictMode Desc strictmodel
-   * @property {bool} strictMode1 Desc strictmodel1
-   * @property {bool} strictMode2 Desc strictmodel2
-   * @constructor
-   *
-   * @description
-   *
-   */
+    /**
+     * @ngdoc object
+     * @name sunRest.sunRestConfigProvider
+     * @typedef  {object} RestConfigProvider
+     * @property {bool} strictMode Desc strictmodel
+     * @property {bool} strictMode1 Desc strictmodel1
+     * @property {bool} strictMode2 Desc strictmodel2
+     * @constructor
+     *
+     * @description
+     *
+     */
   sunRest.provider('sunRestConfig', function () {
     var baseUrl = '',
       responseDataListLocation = '',
@@ -386,23 +386,23 @@
        * @property {function}  dataExtractor
        */
       function sunRestSchema(properties) {
-        angular.extend(this, this.defaultProperties, properties);
-        if (!this.route) {
-          throw new Error('Schema does not have route property');
+          angular.extend(this, this.defaultProperties, properties);
+          if (!this.route) {
+            throw new Error('Schema does not have route property');
+          }
+          if (!this.routeIdProperty) {
+            this.routeIdProperty = this.extractRouteIdProperty(this.route);
+          }
+          if (this.propertyModifier) {
+            this.applyPropertyModifier(this.properties, this.propertyModifier);
+          }
+          this.router = new sunRestRouter(this.route);
         }
-        if (!this.routeIdProperty) {
-          this.routeIdProperty = this.extractRouteIdProperty(this.route);
-        }
-        if (this.propertyModifier) {
-          this.applyPropertyModifier(this.properties, this.propertyModifier);
-        }
-        this.router = new sunRestRouter(this.route);
-      }
-      /**
-       * @name sunRest.sunRestSchema.defaultProperties
-       * @memberOf sunRest.sunRestSchema
-       * @methodOf sunRest.sunRestSchema
-       */
+        /**
+         * @name sunRest.sunRestSchema.defaultProperties
+         * @memberOf sunRest.sunRestSchema
+         * @methodOf sunRest.sunRestSchema
+         */
       sunRestSchema.prototype.defaultProperties = {
         name: null,
         route: null,
@@ -493,28 +493,28 @@
        *                     / '*' / '+' / ',' / ';' / '='
        */
       function encodeUriQuery(val, pctEncodeSpaces) {
-        return encodeURIComponent(val).replace(/%40/gi, '@').replace(/%3A/gi, ':').replace(/%24/g, '$').replace(/%2C/gi, ',').replace(/%20/g, pctEncodeSpaces ? '%20' : '+');
-      }
-      /**
-       * We need our custom method because encodeURIComponent is too aggressive and doesn't follow
-       * http://www.ietf.org/rfc/rfc3986.txt with regards to the character set (pchar) allowed in path
-       * segments:
-       *    segment       = *pchar
-       *    pchar         = unreserved / pct-encoded / sub-delims / ':' / '@'
-       *    pct-encoded   = '%' HEXDIG HEXDIG
-       *    unreserved    = ALPHA / DIGIT / '-' / '.' / '_' / '~'
-       *    sub-delims    = '!' / '$' / '&' / ''' / '(' / ')'
-       *                     / '*' / '+' / ',' / ';' / '='
-       */
+          return encodeURIComponent(val).replace(/%40/gi, '@').replace(/%3A/gi, ':').replace(/%24/g, '$').replace(/%2C/gi, ',').replace(/%20/g, pctEncodeSpaces ? '%20' : '+');
+        }
+        /**
+         * We need our custom method because encodeURIComponent is too aggressive and doesn't follow
+         * http://www.ietf.org/rfc/rfc3986.txt with regards to the character set (pchar) allowed in path
+         * segments:
+         *    segment       = *pchar
+         *    pchar         = unreserved / pct-encoded / sub-delims / ':' / '@'
+         *    pct-encoded   = '%' HEXDIG HEXDIG
+         *    unreserved    = ALPHA / DIGIT / '-' / '.' / '_' / '~'
+         *    sub-delims    = '!' / '$' / '&' / ''' / '(' / ')'
+         *                     / '*' / '+' / ',' / ';' / '='
+         */
       function encodeUriSegment(val) {
-        return encodeUriQuery(val, true).replace(/%26/gi, '&').replace(/%3D/gi, '=').replace(/%2B/gi, '+');
-      }
-      /**
-       * @class sunRestRouter
-       * @name sunRest.sunRestRouter
-       * @param template
-       * @param defaults
-       */
+          return encodeUriQuery(val, true).replace(/%26/gi, '&').replace(/%3D/gi, '=').replace(/%2B/gi, '+');
+        }
+        /**
+         * @class sunRestRouter
+         * @name sunRest.sunRestRouter
+         * @param template
+         * @param defaults
+         */
       function sunRestRouter(template, defaults) {
         if (template) {
           if (template[template.length - 1] === '/')
@@ -633,7 +633,7 @@
       });
       //    this._setDefaults(data);
       if (!_.isEmpty(data)) {
-        this.mngr.populate(data);
+        _.extend(this, data);
       }
     };
     BaseModel.prototype.constructor = BaseModel;
@@ -689,23 +689,39 @@
         }
         return obj;
       }
-      //endregion
-      /**
-       * @ngdoc service
-       * @name sunRest.sunRestModelManager
-       *
-       * @constructor
-       * @param {sunRestBaseModel} model Managed model
-       * @param {?sunRestSchema} schema Schema of the resource
-       * @param {?sunRestBaseModel} modelClass Model class
-       *
-       * @property {sunRestBaseModel} model Managed model
-       * @property  {sunRestSchema} schema Resource schema
-       * @property  {sunRestBaseModel} modelClass Model class
-       *
-       * @description
-       * Manager for all model
-       */
+
+      function getCollection(relationConfig) {
+          var collection;
+          if (relationConfig.service) {
+            collection = $injector.get(relationConfig.service);
+            if (!collection) {
+              throw new Error('Unable to get service "' + relationConfig.service + '"');
+            }
+          } else {
+            collection = $injector.get('sunRestRepository').get(relationConfig.resource);
+            if (!collection) {
+              throw new Error('Unable to get resource "' + relationConfig.resource + '"');
+            }
+          }
+          return collection;
+        }
+        //endregion
+        /**
+         * @ngdoc service
+         * @name sunRest.sunRestModelManager
+         *
+         * @constructor
+         * @param {sunRestBaseModel} model Managed model
+         * @param {?sunRestSchema} schema Schema of the resource
+         * @param {?sunRestBaseModel} modelClass Model class
+         *
+         * @property {sunRestBaseModel} model Managed model
+         * @property  {sunRestSchema} schema Resource schema
+         * @property  {sunRestBaseModel} modelClass Model class
+         *
+         * @description
+         * Manager for all model
+         */
       function sunRestModelManager(model, schema, modelClass) {
         // TODO Try to remove dependency
         Object.defineProperty(this, 'model', {
@@ -755,7 +771,8 @@
         this.remoteFlag = saveRemoteFlag;
       };
       sunRestModelManager.prototype.toJSON = function () {
-        var returnData = {}, value;
+        var returnData = {},
+          value;
         _.forEach(this.schema.properties, function (property, key) {
           value = this.model['_' + key];
           if (property.toJson) {
@@ -766,7 +783,8 @@
         return this.normalizeData(returnData, this.NORMALIZE_OUTGOING);
       };
       sunRestModelManager.prototype.normalizeData = function (data, way) {
-        var normalizedData = {}, isOutgoing = way === this.NORMALIZE_OUTGOING;
+        var normalizedData = {},
+          isOutgoing = way === this.NORMALIZE_OUTGOING;
         if (!data) {
           return {};
         }
@@ -839,7 +857,8 @@
       sunRestModelManager.prototype.simpleRequest = function (method, params, data, path) {
         var promise, httpConfig = {
             method: method
-          }, schema = this.schema,
+          },
+          schema = this.schema,
           self = this;
         if (hasBody(method)) {
           httpConfig.data = data;
@@ -861,12 +880,42 @@
         }
         return promise;
       };
+      sunRestModelManager.prototype.populateRelated = function (populateOptions) {
+        var mngr = this;
+        populateOptions = populateOptions || _.keys(this.schema.relations);
+        var prom = _(populateOptions).map(function (name, opts) {
+          var collection, relationConfig = mngr.schema.relations[name],
+            url, options;
+          if (!relationConfig) {
+            throw new Error('Unknown relation \'' + name + '\'');
+          }
+          collection = getCollection(relationConfig);
+          options = !_.isArray(populateOptions) ? opts : {};
+          if (relationConfig.absolute) {
+            url = collection.schema.router.template;
+          } else {
+            var params = {};
+            var routeProp = mngr.model[mngr.schema.routeIdProperty];
+            if (routeProp) {
+              params[mngr.schema.routeIdProperty] = routeProp;
+            }
+            var baseUrl = mngr.schema.router.buildConfig({}, params).url;
+            url = (baseUrl + '/' + collection.schema.router.template).replace('//', '/');
+          }
+          options.params = options.params || {};
+          options.params.url = options.params.url || url;
+          return collection.request(options).$promise.then(function (resp) {
+            mngr.model[relationConfig.to || name] = resp.resource;
+            return resp;
+          });
+        }).value();
+        return $q.all(prom);
+      };
       Object.defineProperties(sunRestModelManager.prototype, {
         state: {
           get: function () {
             /*jslint white:true*/
             var state;
-            this.i = (this.i || 0) + 1;
             if (!this.remoteFlag) {
               state = this.NEW;
             } else if (this.deleteFlag) {
@@ -901,7 +950,8 @@
         child.prototype.schema = schema;
         child.prototype.modelClass = model;
         if (schema.relations) {
-          var related = {}, relatedMngr = {};
+          var related = {},
+            relatedMngr = {};
           _.forEach(schema.relations, function (relationConfig, relationName) {
             if (!(relationConfig.service || relationConfig.resource)) {
               throw new Error('Inappropriate configuration of related item. Resource or service should be speccified');
@@ -910,21 +960,7 @@
               throw new Error('Not implemented to get arrays');
             }
             relatedMngr[relationName] = {
-              get: function () {
-                var collection;
-                if (relationConfig.service) {
-                  collection = $injector.get(relationConfig.service);
-                  if (!collection) {
-                    throw new Error('Unable to get service "' + relationConfig.service + '"');
-                  }
-                } else {
-                  collection = $injector.get('sunRestRepository').get(relationConfig.resource);
-                  if (!collection) {
-                    throw new Error('Unable to get resource "' + relationConfig.resource + '"');
-                  }
-                }
-                return collection;
-              }
+              get: function () {}
             };
             related[relationName] = {
               get: function () {
@@ -966,8 +1002,8 @@
           if (Model.prototype[prop_name]) {
             customGetter = customSetter = customProperty = true;
           } else {
-            customGetter = !! prop.getter;
-            customSetter = !! prop.setter;
+            customGetter = !!prop.getter;
+            customSetter = !!prop.setter;
           }
           modelProperties['_' + prop_name] = {
             get: function () {
@@ -1032,18 +1068,67 @@
     'sunRestConfig',
     'sunRestModelFactory',
     function ($q, $http, sunUtils, sunRestConfig, sunRestModelFactory) {
+      function normalizeOptions(options, defaults) {
+        if (_.isBoolean(options)) {
+          options = {
+            isArray: options
+          };
+        }
+        options = options || {};
+        return _.defaults(options, defaults);
+      }
       var sunRestCollection = function (schema) {
         this.schema = schema;
         this.model = sunRestModelFactory(schema);
       };
-      sunRestCollection.prototype.find = function (params, postData) {
-        return this.query(params, postData);
+      sunRestCollection.prototype.find = function (params, options) {
+        options = normalizeOptions(options, {
+          method: 'GET',
+          params: params
+        });
+        return this.request(options);
       };
-      sunRestCollection.prototype.query = function (params, postData, isArray) {
+      sunRestCollection.prototype.find.one = function (data, params, options) {
+        options = normalizeOptions(options, {
+          isArray: false
+        });
+        return this.find(options);
+      };
+      sunRestCollection.prototype.find.all = function (data, params, options) {
+        options = normalizeOptions(options, {
+          isArray: true
+        });
+        return this.find(options);
+      };
+      sunRestCollection.prototype.query = function (data, params, options) {
+        options = normalizeOptions(options, {
+          method: 'POST',
+          data: data,
+          params: params
+        });
+        return this.request(options);
+      };
+      sunRestCollection.prototype.query.one = function (data, params, options) {
+        options = normalizeOptions(options, {
+          isArray: false
+        });
+        return this.query(options);
+      };
+      sunRestCollection.prototype.query.all = function (data, params, options) {
+        options = normalizeOptions(options, {
+          isArray: true
+        });
+        return this.query(options);
+      };
+      sunRestCollection.prototype.request = function (options) {
+        options = options || {};
         var promise, id, httpConfig, value, dataLocation, Model = this.model,
           schema = this.schema,
-          method = postData ? 'POST' : 'GET',
-          self = this;
+          method = options.method ? options.method : options.data ? 'POST' : 'GET',
+          self = this,
+          data = options.data,
+          params = options.params,
+          isArray = options.isArray;
         if (!_.isObject(params) && angular.isDefined(params)) {
           id = params;
           params = {};
@@ -1054,11 +1139,10 @@
         }
         dataLocation = isArray === true ? this.schema.dataListLocation : this.schema.dataItemLocation;
         value = isArray ? [] : new Model();
-        httpConfig = {
+        httpConfig = this.schema.router.buildConfig({
           method: method,
-          data: postData
-        };
-        this.schema.router.buildConfig(httpConfig, params);
+          data: data
+        }, params);
         //noinspection UnnecessaryLocalVariableJS
         promise = this.schema.wrappedRequestInterceptor(this, httpConfig).then(function (newConfig) {
           return $http(newConfig);
@@ -1087,6 +1171,16 @@
           value.$resolved = true;
           return $q.reject(response);
         });
+        if (options.populateRelated) {
+          promise = promise.then(function (resp) {
+            var prom = _(isArray ? resp.resource : [resp.resource]).map(function (obj) {
+              return obj.mngr.populateRelated(!_.isBoolean(options.populateRelated) ? options.populateRelated : undefined);
+            }).value();
+            return $q.all(prom).then(function () {
+              return resp;
+            });
+          });
+        }
         value.$promise = promise;
         value.$resolved = false;
         return value;

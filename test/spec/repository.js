@@ -1,13 +1,18 @@
 /**
  * Created by maxaon on 14.01.14.
  */
-//noinspection JSAccessibilityCheck
-jasmine.Matchers.prototype.toBeInstanceOf = function (expected) {
-  'use strict';
-  this.message = function () {
-    return 'Expected ' + (this.actual) + (this.isNot ? ' not' : '') + ' to be instance of ' + expected;
-  }.bind(this);
-  return this.actual instanceof expected;
+var custom = {
+  toBeInstanceOf: function (util, customEqualityTesters) {
+    return {
+      compare: function (actual, expected) {
+        'use strict';
+        var result = {};
+        result.pass = actual instanceof expected;
+        result.message = 'Expected ' + (actual) + (result.pass ? ' not' : '') + ' to be instance of ' + expected;
+        return result;
+      }
+    };
+  }
 };
 function userSchema(override) {
   'use strict';
@@ -27,6 +32,9 @@ function userSchema(override) {
     override
   );
 }
+beforeEach(function () {
+  jasmine.addMatchers(custom);
+});
 
 function model(id, override) {
   'use strict';
@@ -220,7 +228,7 @@ describe('Repository creation with configuration', function () {
     });
   });
 });
-ddescribe('Repository with related objects', function () {
+describe('Repository with related objects', function () {
   beforeEach(module('sun.rest'));
   it('should retrive related repository by collection', function () {
     module(function ($provide) {
@@ -230,7 +238,7 @@ ddescribe('Repository with related objects', function () {
             billId: {}
           },
           relations: {
-            bill: {
+            bills: {
               service: 'BillsCollection',
               property: 'billId'
             }
@@ -251,12 +259,20 @@ ddescribe('Repository with related objects', function () {
     });
     inject(function ($httpBackend, PrimaryCollection) {
       $httpBackend.expect('GET', '/controllers/12').respond(model());
-      var obj = PrimaryCollection.find(12);
+      $httpBackend.expect('GET', '/controllers/12/bills').respond([
+        {id: 1, name: "bill1"},
+        {id: 2, name: "bill2"}
+      ]);
+      var obj = PrimaryCollection.find(12, {populateRelated: true});
       $httpBackend.flush();
-//      var bill = obj.mngr.related.bill
+      expect(obj.title).toBe("Home 12");
+      expect(obj.bills).toBeDefined();
+      expect(obj.bills.length).toBeDefined(2);
+      expect(obj.bills[0].name).toBe('bill1');
+      expect(obj.bills[1].name).toBe('bill2');
 
 
-    })
+    });
 
   })
 });
