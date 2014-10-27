@@ -228,7 +228,7 @@ describe('Repository creation with configuration', function () {
     });
   });
 });
-describe('Repository with related objects', function () {
+ddescribe('Repository with related objects', function () {
   beforeEach(module('sun.rest'));
   it('should retrive related repository by collection', function () {
     module(function ($provide) {
@@ -257,7 +257,7 @@ describe('Repository with related objects', function () {
 
 
     });
-    inject(function ($httpBackend, PrimaryCollection) {
+    inject(function ($httpBackend, PrimaryCollection, sunRestNestedModelManager) {
       $httpBackend.expect('GET', '/controllers/12').respond(model());
       $httpBackend.expect('GET', '/controllers/12/bills').respond([
         {id: 1, name: "bill1"},
@@ -270,6 +270,13 @@ describe('Repository with related objects', function () {
       expect(obj.bills.length).toBeDefined(2);
       expect(obj.bills[0].name).toBe('bill1');
       expect(obj.bills[1].name).toBe('bill2');
+      expect(obj.mngr.related.bills).toBeInstanceOf(sunRestNestedModelManager);
+      var bill = obj.mngr.related.bills.create();
+      bill.name = "bill3";
+      $httpBackend.expect('POST', '/controllers/12/bills', {"name": "bill3"})
+        .respond({id: 3, name: "bill3"});
+      bill.mngr.save();
+      $httpBackend.flush();
 
 
     });

@@ -17,7 +17,9 @@ sunRest.factory('sunRestModelFactory', function (sunUtils, sunRestBaseModel, sun
       var customSetter = false,
         customGetter = false,
         customProperty = false,
-        properties = {};
+        property = {
+          enumerable: true
+        };
       if (Model.prototype[prop_name]) {
         customGetter = customSetter = customProperty = true;
       } else {
@@ -38,7 +40,10 @@ sunRest.factory('sunRestModelFactory', function (sunUtils, sunRestBaseModel, sun
               this.mngr.modifyFlag = true;
             }
           }
-          this['__' + prop_name] = value;
+          Object.defineProperty(this, '__' + prop_name, {
+            enumerable: false, value: value, configurable: true
+          });
+//          this['__' + prop_name] = value;
         }
       };
       if (customProperty) {
@@ -46,31 +51,31 @@ sunRest.factory('sunRestModelFactory', function (sunUtils, sunRestBaseModel, sun
       }
       if (prop.getter !== null) {
         if (customGetter) {
-          properties.get = function () {
+          property.get = function () {
             return schema.properties[prop_name].getter.call(this, this['_' + prop_name]);
           };
         } else {
-          properties.get = function () {
+          property.get = function () {
             return this['_' + prop_name];
           };
         }
       }
       if (prop.setter !== null) {
         if (customSetter) {
-          properties.set = function (value) {
+          property.set = function (value) {
             var res = schema.properties[prop_name].setter.call(this, value);
             if (res !== undefined) {
               this['_' + prop_name] = res;
             }
           };
         } else {
-          properties.set = function (value) {
+          property.set = function (value) {
             this['_' + prop_name] = value;
           };
         }
       }
-      if (properties.set || properties.get) {
-        modelProperties[prop_name] = properties;
+      if (property.set || property.get) {
+        modelProperties[prop_name] = property;
       }
     });
     Object.defineProperties(Model.prototype, modelProperties);

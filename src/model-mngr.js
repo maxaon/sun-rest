@@ -346,24 +346,9 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
           throw new Error('Not implemented to get arrays');
 
         }
-        relatedMngr[relationName] = {
-          get: function () {
-
-          }
-        };
-
-
-        related[relationName] = {
-          get: function () {
-            if (relationConfig.isArray) {
-              throw new Error('is Array not implemented');
-            }
-            var mngr = this.__mngr;
-            var property = relationConfig.property || relationName;
-            var obj = mngr.relatedMngr[relationName].find(mngr.model[property]);
-            return obj;
-          }
-        };
+        var sunRestNestedModelManager = $injector.get('sunRestNestedModelManager');
+        related[relationName] = sunRestNestedModelManager.create(child, getCollection(relationConfig));
+        child.prototype.related = related;
       });
 
 
@@ -374,4 +359,18 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
   };
 
   return sunRestModelManager;
+});
+sunRest.factory('sunRestNestedModelManager', function ($http, $q, $injector, sunUtils, sunRestConfig, sunRestRouter, sunRestModelManager) {
+  function sunRestNestedModelManager(parentMngr, collection) {
+    debugger
+  }
+k
+  sunRestNestedModelManager.create = function (parentMngr, collection) {
+    debugger;
+  }
+
+  sunUtils.inherit(sunRestNestedModelManager, sunRestModelManager);
+//  sunRestNestedModelManager.prototype.
+  return sunRestNestedModelManager;
+
 });
