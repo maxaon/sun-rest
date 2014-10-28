@@ -364,7 +364,7 @@ sunRest.factory('sunRestNestedModelManager', function ($http, $q, $injector, sun
   function sunRestNestedModelManager(parentMngr, collection) {
     debugger
   }
-k
+
   sunRestNestedModelManager.create = function (parentMngr, collection) {
     debugger;
   }

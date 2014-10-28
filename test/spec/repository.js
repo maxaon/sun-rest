@@ -231,7 +231,8 @@ describe('Repository creation with configuration', function () {
 ddescribe('Repository with related objects', function () {
   beforeEach(module('sun.rest'));
   it('should retrive related repository by collection', function () {
-    module(function ($provide) {
+    module(function ($provide, sunRestConfigProvider) {
+      sunRestConfigProvider.baseUrl = "http://api.site.com:8080/v1";
       $provide.factory('PrimaryCollection', function (sunRestRepository) {
         return sunRestRepository.create(userSchema({
           properties: {
@@ -258,8 +259,8 @@ ddescribe('Repository with related objects', function () {
 
     });
     inject(function ($httpBackend, PrimaryCollection, sunRestNestedModelManager) {
-      $httpBackend.expect('GET', '/controllers/12').respond(model());
-      $httpBackend.expect('GET', '/controllers/12/bills').respond([
+      $httpBackend.expect('GET', 'http://api.site.com:8080/v1/controllers/12').respond(model());
+      $httpBackend.expect('GET', 'http://api.site.com:8080/v1/controllers/12/bills').respond([
         {id: 1, name: "bill1"},
         {id: 2, name: "bill2"}
       ]);
