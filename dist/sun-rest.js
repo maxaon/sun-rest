@@ -1156,7 +1156,9 @@
             if (isArray) {
               value.length = 0;
               angular.forEach(extracted, function (item) {
-                value.push(new Model(item));
+                var model = new Model();
+                model.mngr.populate(item);
+                value.push(model);
               });
             } else {
               value.mngr.populate(extracted);
