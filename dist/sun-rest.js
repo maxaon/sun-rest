@@ -524,73 +524,123 @@
         this.defaults = defaults || {};
         this.urlParams = {};
       }
-      sunRestRouter.prototype = {
-        buildConfig: function (config, params, actionUrl) {
-          params = params || {};
-          actionUrl = actionUrl || params.url;
-          delete params.url;
-          var url, val, encodedVal, urlParams = {};
-          if (actionUrl && actionUrl.indexOf('^') === 0) {
-            url = actionUrl.slice(1);
-          } else {
-            url = this.template;
-            if (actionUrl) {
-              if (actionUrl[actionUrl.length - 1] == '/' && actionUrl.length !== 1)
-                actionUrl = actionUrl.slice(0, -1);
-              if (actionUrl[0] === '/') {
-                url = actionUrl;
-              } else {
-                url = this.template + '/' + actionUrl;
-              }
-            }
-            if (url[0] === '/')
-              url = sunRestConfig.baseUrl + url + '/';
-            else
-              url = url + '/';
-          }
-          angular.forEach(url.split(/\W/), function (param) {
-            if (param === 'hasOwnProperty') {
-              throw new Error('hasOwnProperty is not a valid parameter name.');
-            }
-            if (!new RegExp('^\\d+$').test(param) && param && new RegExp('(^|[^\\\\]):' + param + '(\\W|$)').test(url)) {
-              urlParams[param] = true;
-            }
-          });
-          params = params || {};
-          angular.forEach(urlParams, function (_, urlParam) {
-            val = params.hasOwnProperty(urlParam) ? params[urlParam] : this.defaults[urlParam];
-            if (angular.isDefined(val) && val !== null) {
-              encodedVal = encodeUriSegment(val);
-              url = url.replace(new RegExp(':' + urlParam + '(\\W|$)', 'g'), encodedVal + '$1');
-            } else {
-              url = url.replace(new RegExp('(/?):' + urlParam + '(\\W|$)', 'g'), function (match, leadingSlashes, tail) {
-                if (tail.charAt(0) === '/') {
-                  return tail;
-                }
-                return leadingSlashes + tail;
-              });
-            }
-          }, this);
-          // strip trailing slashes and set the url
-          if (sunRestConfig.trailingSlashes === false) {
-            url = url.slice(0, url.length - 1) || '/';
-          }
-          // then replace collapse `/.` if found in the last URL path segment before the query
-          // E.g. `http://url.com/id./format?q=x` becomes `http://url.com/id.format?q=x`
-          url = url.replace(/\/\.(?=\w+($|\?))/, '.');
-          // replace escaped `/\.` with `/.`
-          config.url = url.replace(/\/\\\./, '/.');
-          // set params - delegate param encoding to $http
-          angular.forEach(params, function (value, key) {
-            if (!urlParams[key]) {
-              config.params = config.params || {};
-              config.params[key] = value;
-            }
-          });
-          return config;
+      sunRestRouter.prototype.generateUrl = function (action, params) {
+        var url;
+        url = this._normalizeUrl(action);
+        url = this._injectParams(url, params);
+        // strip trailing slashes
+        if (sunRestConfig.trailingSlashes === false) {
+          url = url.slice(0, url.length - 1) || '/';
         }
+        // then replace collapse `/.` if found in the last URL path segment before the query
+        // E.g. `http://url.com/id./format?q=x` becomes `http://url.com/id.format?q=x`
+        url = url.replace(/\/\.(?=\w+($|\?))/, '.');
+        // replace escaped `/\.` with `/.`
+        url = url.replace(/\/\\\./, '/.');
+        return url;
+      };
+      sunRestRouter.prototype.buildConfig = function (config, params, actionUrl) {
+        params = params || {};
+        config = config || {};
+        var url, action = actionUrl || params.url,
+          urlParams;
+        url = this.generateUrl(action, params);
+        config.url = url;
+        urlParams = this._extractUrlParams(this._normalizeUrl(action));
+        // set params - delegate param encoding to $http
+        angular.forEach(params, function (value, key) {
+          if (!urlParams[key]) {
+            config.params = config.params || {};
+            config.params[key] = value;
+          }
+        });
+        return config;
+      };
+      sunRestRouter.prototype._extractUrlParams = function _extractUrlParams(url) {
+        var urlParams = {};
+        angular.forEach(url.split(/\W/), function (param) {
+          if (param === 'hasOwnProperty') {
+            throw new Error('hasOwnProperty is not a valid parameter name.');
+          }
+          if (!new RegExp('^\\d+$').test(param) && param && new RegExp('(^|[^\\\\]):' + param + '(\\W|$)').test(url)) {
+            urlParams[param] = true;
+          }
+        });
+        return urlParams;
+      };
+      sunRestRouter.prototype._getBaseUrl = function () {
+        return sunRestConfig.baseUrl;
+      };
+      sunRestRouter.prototype._prependBaseUrl = function (url) {
+        if (url[0] === '/') {
+          url = this._getBaseUrl() + url + '/';
+        } else {
+          url = url + '/';
+        }
+        return url;
+      };
+      sunRestRouter.prototype._normalizeUrl = function _normalizeUrl(actionUrl) {
+        var url;
+        if (actionUrl && actionUrl.indexOf('^') === 0) {
+          url = actionUrl.slice(1);
+        } else {
+          url = this.template;
+          if (actionUrl) {
+            if (actionUrl[actionUrl.length - 1] === '/' && actionUrl.length !== 1) {
+              actionUrl = actionUrl.slice(0, -1);
+            }
+            if (actionUrl[0] === '/') {
+              url = actionUrl;
+            } else {
+              url = this.template + '/' + actionUrl;
+            }
+          }
+          url = this._prependBaseUrl(url);
+        }
+        return url;
+      };
+      sunRestRouter.prototype._injectParams = function _injectParams(url, params) {
+        var val, encodedVal, defaults, urlParams = this._extractUrlParams(url);
+        params = params || {};
+        defaults = _.isFunction(this.defaults) ? this.defaults() : this.defaults;
+        angular.forEach(urlParams, function (_, urlParam) {
+          val = params.hasOwnProperty(urlParam) ? params[urlParam] : defaults[urlParam];
+          if (angular.isDefined(val) && val !== null) {
+            encodedVal = encodeUriSegment(val);
+            url = url.replace(new RegExp(':' + urlParam + '(\\W|$)', 'g'), encodedVal + '$1');
+          } else {
+            url = url.replace(new RegExp('(/?):' + urlParam + '(\\W|$)', 'g'), function (match, leadingSlashes, tail) {
+              if (tail.charAt(0) === '/') {
+                return tail;
+              }
+              return leadingSlashes + tail;
+            });
+          }
+        }, this);
+        return url;
       };
       return sunRestRouter;
+    }
+  ]);
+  sunRest.factory('sunRestRouterNested', [
+    'sunRestConfig',
+    'sunRestRouter',
+    'sunUtils',
+    function (sunRestConfig, sunRestRouter, sunUtils) {
+      function SunRestRouterNested(parentRouter, parentDefaultsCB, template, defaults) {
+        this.$super.constructor.call(this, template, defaults);
+        this.parentRouter = Object.create(parentRouter);
+        this.parentRouter.defaults = parentDefaultsCB;
+        this.parentRouter._getBaseUrl = function () {
+          return '';
+        };
+      }
+      sunUtils.inherit(SunRestRouterNested, sunRestRouter);
+      SunRestRouterNested.prototype._prependBaseUrl = function (url) {
+        var parentUrl = this.parentRouter.generateUrl();
+        return this._getBaseUrl() + parentUrl + url + '/';
+      };
+      return SunRestRouterNested;
     }
   ]);
   sunRest.factory('sunRestRepository', [
@@ -626,17 +676,20 @@
      * @typedef {object} sunRestBaseModel
      */
     var BaseModel = function (data) {
+      if (!this.schema) {
+        throw new Error('Model must be created through ModelFactory');
+      }
       // Manager can not be properly copied by `angular.copy`
       Object.defineProperty(this, 'mngr', {
-        value: new this.constructor.mngrClass(this),
+        value: new this.mngrClass(this),
         enumerable: false
       });
-      //    this._setDefaults(data);
       if (!_.isEmpty(data)) {
         _.extend(this, data);
       }
     };
     BaseModel.prototype.constructor = BaseModel;
+    BaseModel.prototype.mngrClass = undefined;
     BaseModel.prototype.toJSON = function () {
       return this.mngr.toJSON();
     };
@@ -722,26 +775,22 @@
          * @description
          * Manager for all model
          */
-      function sunRestModelManager(model, schema, modelClass) {
+      function sunRestModelManager(model) {
+        if (!this.schema) {
+          throw new Error('Mngr must be contain schema');
+        }
         // TODO Try to remove dependency
         Object.defineProperty(this, 'model', {
           value: model,
           enumerable: false
         });
-        if (schema) {
-          /** @type sunRestSchema */
-          this.schema = schema;
-        }
-        if (modelClass) {
-          this.modelClass = modelClass;
-        }
-        this.route = new sunRestRouter(this.schema.route);
         this.remoteFlag = false;
         this.modifyFlag = false;
         this.originalData = {};
         this.changedProperties = {};
         this.deleteFlag = false;
         this.populating = false;
+        this.updateRelations();
       }
       sunRestModelManager.prototype.NEW = 'new';
       sunRestModelManager.prototype.DELETED = 'deleted';
@@ -749,6 +798,7 @@
       sunRestModelManager.prototype.LOADED = 'loaded';
       sunRestModelManager.prototype.NORMALIZE_INCOMING = 'incoming';
       sunRestModelManager.prototype.NORMALIZE_OUTGOING = 'outgoing';
+      sunRestModelManager.prototype.schema = undefined;
       sunRestModelManager.prototype.populate = function (data) {
         var properties = this.schema.properties;
         this.populating = true;
@@ -884,32 +934,30 @@
         var mngr = this;
         populateOptions = populateOptions || _.keys(this.schema.relations);
         var prom = _(populateOptions).map(function (name, opts) {
-          var collection, relationConfig = mngr.schema.relations[name],
-            url, options;
-          if (!relationConfig) {
-            throw new Error('Unknown relation \'' + name + '\'');
-          }
-          collection = getCollection(relationConfig);
-          options = !_.isArray(populateOptions) ? opts : {};
-          if (relationConfig.absolute) {
-            url = collection.schema.router.template;
-          } else {
-            var params = {};
-            var routeProp = mngr.model[mngr.schema.routeIdProperty];
-            if (routeProp) {
-              params[mngr.schema.routeIdProperty] = routeProp;
-            }
-            var baseUrl = mngr.schema.router.buildConfig({}, params).url;
-            url = (baseUrl + '/' + collection.schema.router.template).replace('//', '/');
-          }
-          options.params = options.params || {};
-          options.params.url = options.params.url || url;
-          return collection.request(options).$promise.then(function (resp) {
-            mngr.model[relationConfig.to || name] = resp.resource;
+          var options = !_.isArray(populateOptions) ? opts : {};
+          return mngr.related[name].request(options).$promise.then(function (resp) {
+            mngr.model[name] = resp.resource;
             return resp;
           });
         }).value();
         return $q.all(prom);
+      };
+      sunRestModelManager.prototype.updateRelations = function () {
+        var self = this;
+        if (self.schema.relations) {
+          var related = {};
+          _.forEach(self.schema.relations, function (relationConfig, relationName) {
+            if (!(relationConfig.service || relationConfig.resource)) {
+              throw new Error('Inappropriate configuration of related item. Resource or service should be speccified');
+            }
+            if (relationConfig.isArray) {
+              throw new Error('Not implemented to get arrays');
+            }
+            var sunRestNestedModelManager = $injector.get('sunRestNestedModelManager');
+            related[relationName] = sunRestNestedModelManager.create(self.schema, self.model, getCollection(relationConfig));
+          });
+          this.related = related;
+        }
       };
       Object.defineProperties(sunRestModelManager.prototype, {
         state: {
@@ -934,7 +982,7 @@
           }
         }
       });
-      sunRestModelManager.create = function (schema, model, overrides) {
+      sunRestModelManager.create = function (schema, overrides) {
         var child;
         if (_.isFunction(overrides)) {
           child = overrides;
@@ -947,37 +995,46 @@
           }
         }
         sunUtils.inherit(child, sunRestModelManager);
-        child.prototype.schema = schema;
-        child.prototype.modelClass = model;
-        if (schema.relations) {
-          var related = {},
-            relatedMngr = {};
-          _.forEach(schema.relations, function (relationConfig, relationName) {
-            if (!(relationConfig.service || relationConfig.resource)) {
-              throw new Error('Inappropriate configuration of related item. Resource or service should be speccified');
-            }
-            if (relationConfig.isArray) {
-              throw new Error('Not implemented to get arrays');
-            }
-            relatedMngr[relationName] = {
-              get: function () {}
-            };
-            related[relationName] = {
-              get: function () {
-                if (relationConfig.isArray) {
-                  throw new Error('is Array not implemented');
-                }
-                var mngr = this.__mngr;
-                var property = relationConfig.property || relationName;
-                var obj = mngr.relatedMngr[relationName].find(mngr.model[property]);
-                return obj;
-              }
-            };
-          });
-        }
         return child;
       };
       return sunRestModelManager;
+    }
+  ]);
+  sunRest.factory('sunRestNestedModelManager', [
+    '$http',
+    '$q',
+    '$injector',
+    'sunUtils',
+    'sunRestConfig',
+    'sunRestRouter',
+    'sunRestModelManager',
+    'sunRestRouterNested',
+    function ($http, $q, $injector, sunUtils, sunRestConfig, sunRestRouter, sunRestModelManager, sunRestRouterNested) {
+      var sunRestNestedModelManager = function () {};
+      sunRestNestedModelManager.create = function (baseSchema, defaults, subCollection) {
+        // WARNING! hardcore govnokod!
+        // Here must be created manager form parent with schema and nested router
+        var nested = function NestedMngr() {
+          var schema = this.schema = Object.create(this.schema);
+          this.schema.router = new sunRestRouterNested(baseSchema.router, defaults, this.schema.router.template, this.schema.router.defaults);
+          var parentModelClass = this.schema.modelClass;
+          var ChildModel = function () {
+            this.schema = schema;
+            var mngrClass = this.mngrClass;
+            this.mngrClass = function () {
+              this.schema = schema;
+              mngrClass.apply(this, arguments);
+            };
+            this.mngrClass.prototype = Object.create(mngrClass.prototype);
+            parentModelClass.apply(this, arguments);
+          };
+          ChildModel.prototype = parentModelClass.prototype;
+          this.schema.modelClass = ChildModel;
+        };
+        nested.prototype = subCollection;
+        return new nested();
+      };
+      return sunRestNestedModelManager;
     }
   ]);
   sunRest.factory('sunRestModelFactory', [
@@ -992,14 +1049,16 @@
        * @constructor
        */
       function sunRestModelFactory(schema) {
-        var Model, modelProperties = {};
-        Model = sunUtils.inherit(schema.inherit || {}, sunRestBaseModel);
+        var ModelClass, modelProperties = {};
+        ModelClass = sunUtils.inherit(schema.inherit || {}, sunRestBaseModel);
         _.forEach(schema.properties, function (prop, prop_name) {
           var customSetter = false,
             customGetter = false,
             customProperty = false,
-            properties = {};
-          if (Model.prototype[prop_name]) {
+            property = {
+              enumerable: true
+            };
+          if (ModelClass.prototype[prop_name]) {
             customGetter = customSetter = customProperty = true;
           } else {
             customGetter = !!prop.getter;
@@ -1019,7 +1078,11 @@
                   this.mngr.modifyFlag = true;
                 }
               }
-              this['__' + prop_name] = value;
+              Object.defineProperty(this, '__' + prop_name, {
+                enumerable: false,
+                value: value,
+                configurable: true
+              }); //          this['__' + prop_name] = value;
             }
           };
           if (customProperty) {
@@ -1027,36 +1090,38 @@
           }
           if (prop.getter !== null) {
             if (customGetter) {
-              properties.get = function () {
+              property.get = function () {
                 return schema.properties[prop_name].getter.call(this, this['_' + prop_name]);
               };
             } else {
-              properties.get = function () {
+              property.get = function () {
                 return this['_' + prop_name];
               };
             }
           }
           if (prop.setter !== null) {
             if (customSetter) {
-              properties.set = function (value) {
+              property.set = function (value) {
                 var res = schema.properties[prop_name].setter.call(this, value);
                 if (res !== undefined) {
                   this['_' + prop_name] = res;
                 }
               };
             } else {
-              properties.set = function (value) {
+              property.set = function (value) {
                 this['_' + prop_name] = value;
               };
             }
           }
-          if (properties.set || properties.get) {
-            modelProperties[prop_name] = properties;
+          if (property.set || property.get) {
+            modelProperties[prop_name] = property;
           }
         });
-        Object.defineProperties(Model.prototype, modelProperties);
-        Model.mngrClass = sunRestModelManager.create(schema, Model, Model.mngr);
-        return Model;
+        Object.defineProperties(ModelClass.prototype, modelProperties);
+        ModelClass.prototype.schema = schema;
+        ModelClass.prototype.mngrClass = sunRestModelManager.create(schema, ModelClass.mngr);
+        ModelClass.prototype.mngrClass.prototype.schema = schema;
+        return ModelClass;
       }
       return sunRestModelFactory;
     }
@@ -1067,7 +1132,8 @@
     'sunUtils',
     'sunRestConfig',
     'sunRestModelFactory',
-    function ($q, $http, sunUtils, sunRestConfig, sunRestModelFactory) {
+    'sunRestModelManager',
+    function ($q, $http, sunUtils, sunRestConfig, sunRestModelFactory, sunRestModelManager) {
       function normalizeOptions(options, defaults) {
         if (_.isBoolean(options)) {
           options = {
@@ -1079,7 +1145,7 @@
       }
       var sunRestCollection = function (schema) {
         this.schema = schema;
-        this.model = sunRestModelFactory(schema);
+        this.schema.modelClass = sunRestModelFactory(schema);
       };
       sunRestCollection.prototype.find = function (params, options) {
         options = normalizeOptions(options, {
@@ -1122,7 +1188,7 @@
       };
       sunRestCollection.prototype.request = function (options) {
         options = options || {};
-        var promise, id, httpConfig, value, dataLocation, Model = this.model,
+        var promise, id, httpConfig, value, dataLocation, Model = this.schema.modelClass,
           schema = this.schema,
           method = options.method ? options.method : options.data ? 'POST' : 'GET',
           self = this,
@@ -1188,9 +1254,13 @@
         return value;
       };
       sunRestCollection.prototype.create = function (data) {
-        var obj = new this.model(data);
-        return obj;
+        return new this.schema.modelClass(data);
       };
+      Object.defineProperty(sunRestCollection.prototype, 'model', {
+        get: function () {
+          return this.schema.modelClass;
+        }
+      });
       return sunRestCollection;
     }
   ]);

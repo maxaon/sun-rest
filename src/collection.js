@@ -1,6 +1,6 @@
 'use strict';
 /* global sunRest */
-sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfig, sunRestModelFactory) {
+sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfig, sunRestModelFactory, sunRestModelManager) {
   function normalizeOptions(options, defaults) {
     if (_.isBoolean(options)) {
       options = {
@@ -13,7 +13,7 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
 
   var sunRestCollection = function (schema) {
     this.schema = schema;
-    this.model = sunRestModelFactory(schema);
+    this.schema.modelClass = sunRestModelFactory(schema);
   };
 
   sunRestCollection.prototype.find = function (params, options) {
@@ -64,7 +64,7 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
       httpConfig,
       value,
       dataLocation,
-      Model = this.model,
+      Model = this.schema.modelClass,
       schema = this.schema,
       method = options.method ? options.method : options.data ? 'POST' : 'GET',
       self = this,
@@ -147,10 +147,14 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
     return value;
   };
   sunRestCollection.prototype.create = function (data) {
-    var obj = new this.model(data);
-    return obj;
+    return new this.schema.modelClass(data);
 
   };
+  Object.defineProperty(sunRestCollection.prototype, 'model', {
+    get: function () {
+      return this.schema.modelClass;
+    }
+  });
   return sunRestCollection;
 });
 

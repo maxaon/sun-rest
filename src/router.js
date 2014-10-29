@@ -55,15 +55,12 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
     this.urlParams = {};
   }
 
-  sunRestRouter.prototype.buildConfig = function (config, params, actionUrl) {
-    params = params || {};
-    var url,
-      urlParams;
-    url = this._normalizeUrl(actionUrl || params.url);
+  sunRestRouter.prototype.generateUrl = function (action, params) {
+    var url;
+    url = this._normalizeUrl(action);
     url = this._injectParams(url, params);
 
-
-    // strip trailing slashes and set the url
+    // strip trailing slashes
     if (sunRestConfig.trailingSlashes === false) {
       url = url.slice(0, url.length - 1) || '/';
     }
@@ -72,9 +69,21 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
     // E.g. `http://url.com/id./format?q=x` becomes `http://url.com/id.format?q=x`
     url = url.replace(/\/\.(?=\w+($|\?))/, '.');
     // replace escaped `/\.` with `/.`
-    config.url = url.replace(/\/\\\./, '/.');
+    url = url.replace(/\/\\\./, '/.');
+    return url;
 
+  };
 
+  sunRestRouter.prototype.buildConfig = function (config, params, actionUrl) {
+    params = params || {};
+    config = config || {};
+    var url,
+      action = actionUrl || params.url,
+      urlParams;
+    url = this.generateUrl(action, params);
+    config.url = url;
+
+    urlParams = this._extractUrlParams(this._normalizeUrl(action));
     // set params - delegate param encoding to $http
     angular.forEach(params, function (value, key) {
       if (!urlParams[key]) {
@@ -98,10 +107,12 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
     });
     return urlParams;
   };
-
+  sunRestRouter.prototype._getBaseUrl = function () {
+    return sunRestConfig.baseUrl;
+  };
   sunRestRouter.prototype._prependBaseUrl = function (url) {
     if (url[0] === '/') {
-      url = sunRestConfig.baseUrl + url + '/';
+      url = this._getBaseUrl() + url + '/';
     }
     else {
       url = url + '/';
@@ -131,11 +142,12 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
   };
 
   sunRestRouter.prototype._injectParams = function _injectParams(url, params) {
-    var val, encodedVal,
+    var val, encodedVal, defaults,
       urlParams = this._extractUrlParams(url);
-
+    params = params || {};
+    defaults = _.isFunction(this.defaults) ? this.defaults() : this.defaults;
     angular.forEach(urlParams, function (_, urlParam) {
-      val = params.hasOwnProperty(urlParam) ? params[urlParam] : this.defaults[urlParam];
+      val = params.hasOwnProperty(urlParam) ? params[urlParam] : defaults[urlParam];
       if (angular.isDefined(val) && val !== null) {
         encodedVal = encodeUriSegment(val);
         url = url.replace(new RegExp(':' + urlParam + '(\\W|$)', 'g'), encodedVal + '$1');
@@ -155,22 +167,22 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
 
   return sunRestRouter;
 });
-sunRest.factory('sunRestRouterNested', function (sunRestConfig, sunRestRouter, sunRestUtils) {
-  function SunRestRouterNested(parentRouter, parentDefaults, template, defaults) {
+sunRest.factory('sunRestRouterNested', function (sunRestConfig, sunRestRouter, sunUtils) {
+  function SunRestRouterNested(parentRouter, parentDefaultsCB, template, defaults) {
     this.$super.constructor.call(this, template, defaults);
     this.parentRouter = Object.create(parentRouter);
-    this.parentRouter.defaults = parentDefaults;
-    this.parentRouter._prependBaseUrl = _.identity;
+    this.parentRouter.defaults = parentDefaultsCB;
+    this.parentRouter._getBaseUrl = function () {
+      return "";
+    };
   }
 
-  sunRestUtils.inherit(SunRestRouterNested, sunRestRouter);
+  sunUtils.inherit(SunRestRouterNested, sunRestRouter);
 
   SunRestRouterNested.prototype._prependBaseUrl = function (url) {
-    var parentUrl = this.parentRouter.buildConfig();
-    var fullUrl = parentUrl + "/" + url
-
+    var parentUrl = this.parentRouter.generateUrl();
+    return  this._getBaseUrl() + parentUrl + url + "/";
   };
-
 
   return SunRestRouterNested;
 

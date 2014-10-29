@@ -60,22 +60,15 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
    * @description
    * Manager for all model
    */
-  function sunRestModelManager(model, schema, modelClass) {
+  function sunRestModelManager(model) {
+    if (!this.schema) {
+      throw new Error("Mngr must be contain schema");
+    }
     // TODO Try to remove dependency
     Object.defineProperty(this, 'model', {
       value: model,
       enumerable: false
     });
-
-    if (schema) {
-      /** @type sunRestSchema */
-      this.schema = schema;
-    }
-    if (modelClass) {
-      this.modelClass = modelClass;
-    }
-
-    this.route = new sunRestRouter(this.schema.route);
 
     this.remoteFlag = false;
     this.modifyFlag = false;
@@ -84,8 +77,9 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
     this.deleteFlag = false;
     this.populating = false;
 
-  }
+    this.updateRelations();
 
+  }
 
   sunRestModelManager.prototype.NEW = 'new';
   sunRestModelManager.prototype.DELETED = 'deleted';
@@ -94,6 +88,8 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
 
   sunRestModelManager.prototype.NORMALIZE_INCOMING = 'incoming';
   sunRestModelManager.prototype.NORMALIZE_OUTGOING = 'outgoing';
+
+  sunRestModelManager.prototype.schema = undefined;
 
   sunRestModelManager.prototype.populate = function (data) {
     var properties = this.schema.properties;
@@ -253,32 +249,9 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
     populateOptions = populateOptions || _.keys(this.schema.relations);
     var prom = _(populateOptions)
       .map(function (name, opts) {
-        var collection,
-          relationConfig = mngr.schema.relations[name],
-          url,
-          options;
-        if (!relationConfig) {
-          throw new Error("Unknown relation '" + name + "'");
-        }
-        collection = getCollection(relationConfig);
-        options = !_.isArray(populateOptions) ? opts : {};
-        if (relationConfig.absolute) {
-          url = collection.schema.router.template;
-        }
-        else {
-          var params = {};
-          var routeProp = mngr.model[mngr.schema.routeIdProperty];
-          if (routeProp) {
-            params[mngr.schema.routeIdProperty] = routeProp;
-          }
-
-          var baseUrl = mngr.schema.router.buildConfig({}, params).url;
-          url = (baseUrl + "/" + collection.schema.router.template).replace("//", "/");
-        }
-        options.params = options.params || {};
-        options.params.url = options.params.url || url;
-        return collection.request(options).$promise.then(function (resp) {
-          mngr.model[relationConfig.to || name] = resp.resource;
+        var options = !_.isArray(populateOptions) ? opts : {};
+        return mngr.related[name].request(options).$promise.then(function (resp) {
+          mngr.model[name] = resp.resource;
           return resp;
         });
 
@@ -286,6 +259,26 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
       .value();
 
     return $q.all(prom);
+  };
+
+  sunRestModelManager.prototype.updateRelations = function () {
+    var self = this;
+    if (self.schema.relations) {
+      var related = {};
+      _.forEach(self.schema.relations, function (relationConfig, relationName) {
+        if (!(relationConfig.service || relationConfig.resource)) {
+          throw new Error('Inappropriate configuration of related item. Resource or service should be speccified');
+        }
+        if (relationConfig.isArray) {
+          throw new Error('Not implemented to get arrays');
+
+        }
+        var sunRestNestedModelManager = $injector.get('sunRestNestedModelManager');
+        related[relationName] = sunRestNestedModelManager.create(self.schema, self.model, getCollection(relationConfig));
+
+      });
+      this.related = related;
+    }
   };
 
   Object.defineProperties(sunRestModelManager.prototype, {
@@ -319,7 +312,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
   });
 
 
-  sunRestModelManager.create = function (schema, model, overrides) {
+  sunRestModelManager.create = function (schema, overrides) {
     var child;
     if (_.isFunction(overrides)) {
       child = overrides;
@@ -332,45 +325,45 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
       }
     }
     sunUtils.inherit(child, sunRestModelManager);
-    child.prototype.schema = schema;
-    child.prototype.modelClass = model;
-
-
-    if (schema.relations) {
-      var related = {}, relatedMngr = {};
-      _.forEach(schema.relations, function (relationConfig, relationName) {
-        if (!(relationConfig.service || relationConfig.resource)) {
-          throw new Error('Inappropriate configuration of related item. Resource or service should be speccified');
-        }
-        if (relationConfig.isArray) {
-          throw new Error('Not implemented to get arrays');
-
-        }
-        var sunRestNestedModelManager = $injector.get('sunRestNestedModelManager');
-        related[relationName] = sunRestNestedModelManager.create(child, getCollection(relationConfig));
-        child.prototype.related = related;
-      });
-
-
-    }
-
-
     return child;
   };
 
   return sunRestModelManager;
 });
-sunRest.factory('sunRestNestedModelManager', function ($http, $q, $injector, sunUtils, sunRestConfig, sunRestRouter, sunRestModelManager) {
-  function sunRestNestedModelManager(parentMngr, collection) {
-    debugger
-  }
+sunRest.factory('sunRestNestedModelManager', function ($http, $q, $injector, sunUtils, sunRestConfig, sunRestRouter, sunRestModelManager, sunRestRouterNested) {
+  var sunRestNestedModelManager = function () {
 
-  sunRestNestedModelManager.create = function (parentMngr, collection) {
-    debugger;
-  }
+  };
+  sunRestNestedModelManager.create = function (baseSchema, defaults, subCollection) {
+    // WARNING! hardcore govnokod!
+    // Here must be created manager form parent with schema and nested router
+    var nested = function NestedMngr() {
+      var schema = this.schema = Object.create(this.schema);
+      this.schema.router = new sunRestRouterNested(baseSchema.router,
+        defaults,
+        this.schema.router.template,
+        this.schema.router.defaults);
+      var parentModelClass = this.schema.modelClass;
+      var ChildModel = function () {
+        this.schema = schema;
+        var mngrClass = this.mngrClass;
+        this.mngrClass = function () {
+          this.schema = schema;
+          mngrClass.apply(this, arguments);
+        };
+        this.mngrClass.prototype = Object.create(mngrClass.prototype);
 
-  sunUtils.inherit(sunRestNestedModelManager, sunRestModelManager);
-//  sunRestNestedModelManager.prototype.
+        parentModelClass.apply(this, arguments);
+      };
+      ChildModel.prototype = parentModelClass.prototype;
+
+      this.schema.modelClass = ChildModel;
+    };
+    nested.prototype = subCollection;
+    return new nested();
+
+  };
+
   return sunRestNestedModelManager;
 
 });

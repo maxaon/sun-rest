@@ -9,10 +9,10 @@ sunRest.factory('sunRestModelFactory', function (sunUtils, sunRestBaseModel, sun
    * @constructor
    */
   function sunRestModelFactory(schema) {
-    var Model, modelProperties = {};
+    var ModelClass, modelProperties = {};
 
 
-    Model = sunUtils.inherit(schema.inherit || {}, sunRestBaseModel);
+    ModelClass = sunUtils.inherit(schema.inherit || {}, sunRestBaseModel);
     _.forEach(schema.properties, function (prop, prop_name) {
       var customSetter = false,
         customGetter = false,
@@ -20,7 +20,7 @@ sunRest.factory('sunRestModelFactory', function (sunUtils, sunRestBaseModel, sun
         property = {
           enumerable: true
         };
-      if (Model.prototype[prop_name]) {
+      if (ModelClass.prototype[prop_name]) {
         customGetter = customSetter = customProperty = true;
       } else {
         customGetter = !!prop.getter;
@@ -78,11 +78,12 @@ sunRest.factory('sunRestModelFactory', function (sunUtils, sunRestBaseModel, sun
         modelProperties[prop_name] = property;
       }
     });
-    Object.defineProperties(Model.prototype, modelProperties);
+    Object.defineProperties(ModelClass.prototype, modelProperties);
+    ModelClass.prototype.schema = schema;
+    ModelClass.prototype.mngrClass = sunRestModelManager.create(schema, /*overrides*/ ModelClass.mngr);
+    ModelClass.prototype.mngrClass.prototype.schema = schema;
 
-    Model.mngrClass = sunRestModelManager.create(schema, Model, Model.mngr);
-
-    return Model;
+    return ModelClass;
   }
 
 

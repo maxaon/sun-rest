@@ -27,3 +27,27 @@ describe('Router buildConfig test', function () {
     expect(config.params.filterBy).toBe('name');
   });
 });
+
+describe("Nested router", function () {
+  var Router, RouterNested;
+  beforeEach(module('sun.rest'));
+  beforeEach(inject(function (_sunRestRouter_, _sunRestRouterNested_) {
+    Router = _sunRestRouter_;
+    RouterNested = _sunRestRouterNested_;
+  }));
+
+  it('should make correct one level nested routes', function () {
+    var baseRouter = new Router("/base/:id"),
+      baseDefaults = {},
+      instanceRouter = new RouterNested(baseRouter, baseDefaults, "/child/:id");
+    baseDefaults.id = 11;
+    expect(instanceRouter.buildConfig().url).toBe("/base/11/child");
+    expect(instanceRouter.buildConfig({}, {id: 123}).url).toBe("/base/11/child/123");
+    expect(instanceRouter.buildConfig({}, {id: 123}, "action").url).toBe("/base/11/child/123/action");
+    baseDefaults.id = 14;
+    expect(instanceRouter.buildConfig({}, {id: 123}, "action").url).toBe("/base/14/child/123/action");
+
+  });
+
+
+})
