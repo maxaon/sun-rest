@@ -638,7 +638,16 @@
       sunUtils.inherit(SunRestRouterNested, sunRestRouter);
       SunRestRouterNested.prototype._prependBaseUrl = function (url) {
         var parentUrl = this.parentRouter.generateUrl();
+        // Escape :
+        parentUrl = parentUrl.replace(/.:+/g, function (m) {
+          return m[0] === '\\' ? m : m[0] + Array(m.length).join('\\:');
+        });
         return this._getBaseUrl() + parentUrl + url + '/';
+      };
+      SunRestRouterNested.prototype.generateUrl = function (url) {
+        url = this.$super.generateUrl.apply(this, arguments);
+        url = url.replace(/\\:/g, ':');
+        return url;
       };
       return SunRestRouterNested;
     }
@@ -858,15 +867,16 @@
         return ids;
       };
       sunRestModelManager.prototype.save = function (params, modifyLocal) {
-        var model, promise, isNew = this.state === this.NEW,
+        var promise, self = this,
+          isNew = this.state === this.NEW,
           method = isNew ? 'POST' : sunRestConfig.updateMethod;
         params = angular.extend({}, this.schema.paramDefaults[isNew ? 'create' : 'update'], params);
-        promise = this.simpleRequest(method, params, this.model, this.schema.dataItemLocation);
-        model = this.model;
+        promise = this.simpleRequest(method, params, this.model);
         if (modifyLocal !== false) {
-          promise = promise.then(function (obj) {
-            model.mngr.populate(obj);
-            return obj;
+          promise = promise.then(function (response) {
+            var obj = self.schema.dataExtractor(self.schema.dataItemLocation, response);
+            self.model.mngr.populate(obj);
+            return response;
           });
         }
         return promise;
@@ -904,7 +914,7 @@
         value.$resolved = false;
         return value;
       };
-      sunRestModelManager.prototype.simpleRequest = function (method, params, data, path) {
+      sunRestModelManager.prototype.simpleRequest = function (method, params, data) {
         var promise, httpConfig = {
             method: method
           },
@@ -921,13 +931,9 @@
         promise = this.schema.wrappedRequestInterceptor(this, httpConfig).then(function (newConfig) {
           return $http(newConfig);
         }).then(function (response) {
-          return schema.wrappedResponseInterceptor(self, response, path);
+          response.resource = self.model;
+          return schema.wrappedResponseInterceptor(self, response);
         });
-        if (angular.isDefined(path)) {
-          promise = promise.then(function (response) {
-            return schema.dataExtractor(path, response);
-          });
-        }
         return promise;
       };
       sunRestModelManager.prototype.populateRelated = function (populateOptions) {
@@ -1139,9 +1145,19 @@
         options = options || {};
         return _.defaults(options, defaults);
       }
+
+      function bindAll(k, that, to) {
+        to = to || k;
+        for (var prop in k) {
+          if (k.hasOwnProperty(prop))
+            to[prop] = _.bind(k[prop], that);
+        }
+      }
       var sunRestCollection = function (schema) {
         this.schema = schema;
         this.schema.modelClass = sunRestModelFactory(schema);
+        bindAll(this.find, this);
+        bindAll(this.query, this);
       };
       sunRestCollection.prototype.find = function (params, options) {
         options = normalizeOptions(options, {
@@ -1150,17 +1166,17 @@
         });
         return this.request(options);
       };
-      sunRestCollection.prototype.find.one = function (data, params, options) {
+      sunRestCollection.prototype.find.one = function (params, options) {
         options = normalizeOptions(options, {
           isArray: false
         });
-        return this.find(options);
+        return this.find(params, options);
       };
       sunRestCollection.prototype.find.all = function (data, params, options) {
         options = normalizeOptions(options, {
           isArray: true
         });
-        return this.find(options);
+        return this.find(params, options);
       };
       sunRestCollection.prototype.query = function (data, params, options) {
         options = normalizeOptions(options, {
@@ -1174,13 +1190,13 @@
         options = normalizeOptions(options, {
           isArray: false
         });
-        return this.query(options);
+        return this.query(data, params, options);
       };
       sunRestCollection.prototype.query.all = function (data, params, options) {
         options = normalizeOptions(options, {
           isArray: true
         });
-        return this.query(options);
+        return this.query(data, params, options);
       };
       sunRestCollection.prototype.request = function (options) {
         options = options || {};

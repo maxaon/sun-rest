@@ -181,7 +181,16 @@ sunRest.factory('sunRestRouterNested', function (sunRestConfig, sunRestRouter, s
 
   SunRestRouterNested.prototype._prependBaseUrl = function (url) {
     var parentUrl = this.parentRouter.generateUrl();
+    // Escape :
+    parentUrl = parentUrl.replace(/.:+/g, function (m) {
+      return m[0] === "\\" ? m : m[0] + Array(m.length).join("\\:");
+    });
     return  this._getBaseUrl() + parentUrl + url + "/";
+  };
+  SunRestRouterNested.prototype.generateUrl = function (url) {
+    url = this.$super.generateUrl.apply(this, arguments);
+    url = url.replace(/\\:/g, ":");
+    return  url;
   };
 
   return SunRestRouterNested;

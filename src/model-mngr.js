@@ -154,17 +154,19 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
     return ids;
   };
   sunRestModelManager.prototype.save = function (params, modifyLocal) {
-    var model, promise,
+    var promise,
+      self = this,
       isNew = (this.state === this.NEW),
       method = isNew ? 'POST' : sunRestConfig.updateMethod;
     params = angular.extend({}, this.schema.paramDefaults[isNew ? 'create' : 'update'], params);
 
-    promise = this.simpleRequest(method, params, this.model, this.schema.dataItemLocation);
-    model = this.model;
+    promise = this.simpleRequest(method, params, this.model);
+
     if (modifyLocal !== false) {
-      promise = promise.then(function (obj) {
-        model.mngr.populate(obj);
-        return obj;
+      promise = promise.then(function (response) {
+        var obj = self.schema.dataExtractor(self.schema.dataItemLocation, response);
+        self.model.mngr.populate(obj);
+        return response;
       });
     }
     return promise;
@@ -214,7 +216,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
 
   };
 
-  sunRestModelManager.prototype.simpleRequest = function (method, params, data, path) {
+  sunRestModelManager.prototype.simpleRequest = function (method, params, data) {
     var promise,
       httpConfig = {method: method},
       schema = this.schema,
@@ -234,13 +236,9 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
       .then(function (newConfig) {
         return $http(newConfig);
       }).then(function (response) {
-        return schema.wrappedResponseInterceptor(self, response, path);
+        response.resource = self.model;
+        return schema.wrappedResponseInterceptor(self, response);
       });
-    if (angular.isDefined(path)) {
-      promise = promise.then(function (response) {
-        return schema.dataExtractor(path, response);
-      });
-    }
     return promise;
   };
 

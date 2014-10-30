@@ -49,5 +49,12 @@ describe("Nested router", function () {
 
   });
 
+  it('should escape : in parent route', function () {
+    var baseRouter = new Router("/base/:token"),
+      baseDefaults = {},
+      instanceRouter = new RouterNested(baseRouter, baseDefaults, "/child/:token");
+    baseDefaults.token = "token::bla::12";
+    expect(instanceRouter.buildConfig({}, {token: "child::123:f3"}).url).toBe("/base/token::bla::12/child/child::123:f3");
+  });
 
 })

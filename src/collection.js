@@ -11,9 +11,19 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
     return _.defaults(options, defaults);
   }
 
+  function bindAll(k, that, to) {
+    to = to || k;
+    for (var prop in k) {
+      if (k.hasOwnProperty(prop))
+        to[prop] = _.bind(k[prop], that);
+    }
+  }
+
   var sunRestCollection = function (schema) {
     this.schema = schema;
     this.schema.modelClass = sunRestModelFactory(schema);
+    bindAll(this.find, this);
+    bindAll(this.query, this);
   };
 
   sunRestCollection.prototype.find = function (params, options) {
@@ -23,17 +33,17 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
     });
     return this.request(options);
   };
-  sunRestCollection.prototype.find.one = function (data, params, options) {
+  sunRestCollection.prototype.find.one = function (params, options) {
     options = normalizeOptions(options, {
       isArray: false
     });
-    return this.find(options);
+    return this.find(params, options);
   };
   sunRestCollection.prototype.find.all = function (data, params, options) {
     options = normalizeOptions(options, {
       isArray: true
     });
-    return this.find(options);
+    return this.find(params, options);
   };
 
   sunRestCollection.prototype.query = function (data, params, options) {
@@ -48,13 +58,13 @@ sunRest.factory('sunRestCollection', function ($q, $http, sunUtils, sunRestConfi
     options = normalizeOptions(options, {
       isArray: false
     });
-    return this.query(options);
+    return this.query(data, params, options);
   };
   sunRestCollection.prototype.query.all = function (data, params, options) {
     options = normalizeOptions(options, {
       isArray: true
     });
-    return this.query(options);
+    return this.query(data, params, options);
   };
 
   sunRestCollection.prototype.request = function (options) {
