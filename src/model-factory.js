@@ -40,10 +40,7 @@ sunRest.factory('sunRestModelFactory', function (sunUtils, sunRestBaseModel, sun
               this.mngr.modifyFlag = true;
             }
           }
-          Object.defineProperty(this, '__' + prop_name, {
-            enumerable: false, value: value, configurable: true
-          });
-//          this['__' + prop_name] = value;
+          this['__' + prop_name] = value;
         }
       };
       if (customProperty) {

@@ -1014,7 +1014,7 @@
       sunRestNestedModelManager.create = function (baseSchema, defaults, subCollection) {
         // WARNING! hardcore govnokod!
         // Here must be created manager form parent with schema and nested router
-        var nested = function NestedMngr() {
+        var nested = function sunRestNestedModelManager() {
           var schema = this.schema = Object.create(this.schema);
           this.schema.router = new sunRestRouterNested(baseSchema.router, defaults, this.schema.router.template, this.schema.router.defaults);
           var parentModelClass = this.schema.modelClass;
@@ -1078,11 +1078,7 @@
                   this.mngr.modifyFlag = true;
                 }
               }
-              Object.defineProperty(this, '__' + prop_name, {
-                enumerable: false,
-                value: value,
-                configurable: true
-              }); //          this['__' + prop_name] = value;
+              this['__' + prop_name] = value;
             }
           };
           if (customProperty) {
