@@ -530,7 +530,7 @@
         url = this._injectParams(url, params);
         // strip trailing slashes
         if (sunRestConfig.trailingSlashes === false) {
-          url = url.slice(0, url.length - 1) || '/';
+          url = url.slice(0, url.length - 1);
         }
         // then replace collapse `/.` if found in the last URL path segment before the query
         // E.g. `http://url.com/id./format?q=x` becomes `http://url.com/id.format?q=x`
@@ -539,13 +539,15 @@
         url = url.replace(/\/\\\./, '/.');
         return url;
       };
-      sunRestRouter.prototype.buildConfig = function (config, params, actionUrl) {
+      sunRestRouter.prototype.buildConfig = function (config, params, action) {
+        var url, urlParams;
         params = params || {};
         config = config || {};
-        var url, action = actionUrl || params.url,
-          urlParams;
-        url = this.generateUrl(action, params);
-        config.url = url;
+        if (params.url) {
+          action = params.url;
+          delete params.url;
+        }
+        config.url = this.generateUrl(action, params);
         urlParams = this._extractUrlParams(this._normalizeUrl(action));
         // set params - delegate param encoding to $http
         angular.forEach(params, function (value, key) {
@@ -597,6 +599,12 @@
           }
           url = this._prependBaseUrl(url);
         }
+        if (url.length === 0) {
+          url = '/';
+        }
+        if (url[url.length - 1] !== '/') {
+          url = url + '/';
+        }
         return url;
       };
       sunRestRouter.prototype._injectParams = function _injectParams(url, params) {
@@ -627,10 +635,10 @@
     'sunRestRouter',
     'sunUtils',
     function (sunRestConfig, sunRestRouter, sunUtils) {
-      function SunRestRouterNested(parentRouter, parentDefaultsCB, template, defaults) {
+      function SunRestRouterNested(parentRouter, parentDefauls, template, defaults) {
         this.$super.constructor.call(this, template, defaults);
         this.parentRouter = Object.create(parentRouter);
-        this.parentRouter.defaults = parentDefaultsCB;
+        this.parentRouter.defaults = Object.create(parentDefauls);
         this.parentRouter._getBaseUrl = function () {
           return '';
         };
@@ -867,15 +875,15 @@
         return ids;
       };
       sunRestModelManager.prototype.save = function (params, modifyLocal) {
-        var promise, self = this,
+        var promise, mngr = this,
           isNew = this.state === this.NEW,
           method = isNew ? 'POST' : sunRestConfig.updateMethod;
         params = angular.extend({}, this.schema.paramDefaults[isNew ? 'create' : 'update'], params);
         promise = this.simpleRequest(method, params, this.model);
         if (modifyLocal !== false) {
           promise = promise.then(function (response) {
-            var obj = self.schema.dataExtractor(self.schema.dataItemLocation, response);
-            self.model.mngr.populate(obj);
+            var obj = mngr.schema.dataExtractor(mngr.schema.dataItemLocation, response);
+            mngr.populate(obj);
             return response;
           });
         }
@@ -885,34 +893,19 @@
         params = angular.extend({}, this.schema.paramDefaults.remove, params);
         return this.simpleRequest('DELETE', params, this.model);
       };
-      sunRestModelManager.prototype.objectRequest = function (method, isArray, params, data) {
-        var promise, Model = this.modelClass,
-          dataLocation = isArray === true ? this.schema.dataListLocation : this.schema.dataItemLocation,
-          value = isArray ? [] : new Model(data),
-          schema = this.schema;
-        promise = this.simpleRequest(method, params, data).then(function (response) {
+      sunRestModelManager.prototype.objectRequest = function (method, params, data) {
+        var mngr = this;
+        return this.simpleRequest(method, params, data).then(function (response) {
           var extracted;
           if (response.data) {
-            extracted = schema.dataExtractor(dataLocation, response);
-            if (isArray) {
-              value.length = 0;
-              angular.forEach(extracted, function (item) {
-                value.push(new Model(item));
-              });
-            } else {
-              value.populate(extracted); //shallowClearAndCopy(data, value);
-            }
+            var obj = mngr.schema.dataExtractor(mngr.schema.dataItemLocation, response);
+            mngr.populate(obj);
           }
-          value.$resolved = true;
-          response.resource = value;
+          response.resource = mngr.model;
           return response;
         }, function (response) {
-          value.$resolved = true;
           return $q.reject(response);
         });
-        value.$promise = promise;
-        value.$resolved = false;
-        return value;
       };
       sunRestModelManager.prototype.simpleRequest = function (method, params, data) {
         var promise, httpConfig = {

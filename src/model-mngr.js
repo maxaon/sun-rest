@@ -155,7 +155,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
   };
   sunRestModelManager.prototype.save = function (params, modifyLocal) {
     var promise,
-      self = this,
+      mngr = this,
       isNew = (this.state === this.NEW),
       method = isNew ? 'POST' : sunRestConfig.updateMethod;
     params = angular.extend({}, this.schema.paramDefaults[isNew ? 'create' : 'update'], params);
@@ -164,8 +164,8 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
 
     if (modifyLocal !== false) {
       promise = promise.then(function (response) {
-        var obj = self.schema.dataExtractor(self.schema.dataItemLocation, response);
-        self.model.mngr.populate(obj);
+        var obj = mngr.schema.dataExtractor(mngr.schema.dataItemLocation, response);
+        mngr.populate(obj);
         return response;
       });
     }
@@ -175,44 +175,24 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
     params = angular.extend({}, this.schema.paramDefaults.remove, params);
     return this.simpleRequest('DELETE', params, this.model);
   };
-  sunRestModelManager.prototype.objectRequest = function (method, isArray, params, data) {
-    var promise,
-      Model = this.modelClass,
-      dataLocation = (isArray === true ? this.schema.dataListLocation : this.schema.dataItemLocation),
-      value = isArray ? [] : (new Model(data)),
-      schema = this.schema;
+  sunRestModelManager.prototype.objectRequest = function (method, params, data) {
+    var mngr = this;
 
-    promise = this.simpleRequest(method, params, data)
+    return this.simpleRequest(method, params, data)
       .then(function (response) {
         var extracted;
 
         if (response.data) {
-          extracted = schema.dataExtractor(dataLocation, response);
-          if (isArray) {
-            value.length = 0;
-            angular.forEach(extracted, function (item) {
-              value.push(new Model(item));
-            });
-          } else {
-            value.populate(extracted);//shallowClearAndCopy(data, value);
-          }
+          var obj = mngr.schema.dataExtractor(mngr.schema.dataItemLocation, response);
+          mngr.populate(obj);
         }
-
-        value.$resolved = true;
-
-        response.resource = value;
+        response.resource = mngr.model;
 
         return response;
       }, function (response) {
-        value.$resolved = true;
 
         return $q.reject(response);
       });
-
-    value.$promise = promise;
-    value.$resolved = false;
-
-    return value;
 
   };
 

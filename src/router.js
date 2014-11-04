@@ -59,12 +59,10 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
     var url;
     url = this._normalizeUrl(action);
     url = this._injectParams(url, params);
-
     // strip trailing slashes
     if (sunRestConfig.trailingSlashes === false) {
-      url = url.slice(0, url.length - 1) || '/';
+      url = url.slice(0, url.length - 1);
     }
-
     // then replace collapse `/.` if found in the last URL path segment before the query
     // E.g. `http://url.com/id./format?q=x` becomes `http://url.com/id.format?q=x`
     url = url.replace(/\/\.(?=\w+($|\?))/, '.');
@@ -74,14 +72,17 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
 
   };
 
-  sunRestRouter.prototype.buildConfig = function (config, params, actionUrl) {
+  sunRestRouter.prototype.buildConfig = function (config, params, action) {
+    var url, urlParams;
     params = params || {};
     config = config || {};
-    var url,
-      action = actionUrl || params.url,
-      urlParams;
-    url = this.generateUrl(action, params);
-    config.url = url;
+
+    if (params.url) {
+      action = params.url;
+      delete params.url;
+    }
+
+    config.url = this.generateUrl(action, params);
 
     urlParams = this._extractUrlParams(this._normalizeUrl(action));
     // set params - delegate param encoding to $http
@@ -138,6 +139,12 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
       }
       url = this._prependBaseUrl(url);
     }
+    if (url.length === 0) {
+      url = "/";
+    }
+    if (url[url.length - 1] !== "/") {
+      url = url + "/";
+    }
     return url;
   };
 
@@ -168,10 +175,10 @@ sunRest.factory('sunRestRouter', function (sunRestConfig) {
   return sunRestRouter;
 });
 sunRest.factory('sunRestRouterNested', function (sunRestConfig, sunRestRouter, sunUtils) {
-  function SunRestRouterNested(parentRouter, parentDefaultsCB, template, defaults) {
+  function SunRestRouterNested(parentRouter, parentDefauls, template, defaults) {
     this.$super.constructor.call(this, template, defaults);
     this.parentRouter = Object.create(parentRouter);
-    this.parentRouter.defaults = parentDefaultsCB;
+    this.parentRouter.defaults = Object.create(parentDefauls);
     this.parentRouter._getBaseUrl = function () {
       return "";
     };
