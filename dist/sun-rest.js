@@ -1139,18 +1139,20 @@
         return _.defaults(options, defaults);
       }
 
-      function bindAll(k, that, to) {
-        to = to || k;
-        for (var prop in k) {
-          if (k.hasOwnProperty(prop))
-            to[prop] = _.bind(k[prop], that);
+      function bindAll(to, self, props) {
+        to = _.bind(to, self);
+        for (var prop in props) {
+          if (props.hasOwnProperty(prop)) {
+            to[prop] = _.bind(props[prop], self);
+          }
         }
+        return to;
       }
       var sunRestCollection = function (schema) {
         this.schema = schema;
         this.schema.modelClass = sunRestModelFactory(schema);
-        bindAll(this.find, this);
-        bindAll(this.query, this);
+        this.find = bindAll(this.find, this, this.find);
+        this.query = bindAll(this.query, this, this.query);
       };
       sunRestCollection.prototype.find = function (params, options) {
         options = normalizeOptions(options, {
