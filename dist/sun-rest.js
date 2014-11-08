@@ -701,6 +701,7 @@
         value: new this.mngrClass(this),
         enumerable: false
       });
+      this.mngr.setDefaults();
       if (!_.isEmpty(data)) {
         _.extend(this, data);
       }
@@ -709,19 +710,6 @@
     BaseModel.prototype.mngrClass = undefined;
     BaseModel.prototype.toJSON = function () {
       return this.mngr.toJSON();
-    };
-    BaseModel.prototype._setDefaults = function (data) {
-      this.mngr.populating = true;
-      _.forEach(this.mngr.schema.properties, function (prop, prop_name) {
-        var default_value = prop['default'];
-        if (default_value !== undefined && (data === undefined || prop_name in data)) {
-          if (angular.isFunction(default_value)) {
-            default_value = new default_value();
-          }
-          this[prop_name] = default_value;
-        }
-      }, this);
-      this.mngr.populating = false;
     };
     return BaseModel;
   });
@@ -830,7 +818,19 @@
         this.remoteFlag = true;
         this.modifyFlag = false;
         this.changedProperties = {};
-        this.originalData = data;
+      };
+      sunRestModelManager.prototype.setDefaults = function () {
+        this.populating = true;
+        _.forEach(this.schema.properties, function (prop, prop_name) {
+          var default_value = prop['default'];
+          if (default_value !== undefined) {
+            if (_.isFunction(default_value)) {
+              default_value = new default_value();
+            }
+            this.model[prop_name] = default_value;
+          }
+        }, this);
+        this.populating = false;
       };
       sunRestModelManager.prototype.reset = function () {
         var saveRemoteFlag = this.remoteFlag;
@@ -859,7 +859,11 @@
           var remoteProperty = prop.remoteProperty ? prop.remoteProperty : name,
             normalizedKey = isOutgoing ? remoteProperty : name,
             noneNormalizedKey = isOutgoing ? name : remoteProperty;
-          normalizedData[normalizedKey] = data[noneNormalizedKey] || data[name];
+          if (data.hasOwnProperty(noneNormalizedKey)) {
+            normalizedData[normalizedKey] = data[noneNormalizedKey];
+          } else if (data.hasOwnProperty(name)) {
+            normalizedData[normalizedKey] = data[name];
+          }
         });
         return normalizedData;
       };
@@ -1076,6 +1080,9 @@
                   this.mngr.changedProperties[prop_name] = true;
                   this.mngr.modifyFlag = true;
                 }
+              }
+              if (this.mngr.populating) {
+                this.mngr.originalData = value;
               }
               this['__' + prop_name] = value;
             }

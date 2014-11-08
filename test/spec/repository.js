@@ -135,8 +135,48 @@ describe('Rest creation', function () {
     expect(obj_copy.mngr).toBeUndefined();
 
   });
+  it('should set default values', function () {
+    var ref = [3, 4, 5];
+    var collection = RestRepository.create(userSchema(
+        {
+          properties: {
+            title: {"default": "DefaultTitle"},
+            devices: {
+              "default": function () {
+                return ref;
+              }
+            },
+            enabled: {"default": true}
+          }
+        }
+      )
+    );
+    var obj = collection.create();
+    expect(obj.title).toBe("DefaultTitle");
+    expect(obj.enabled).toBe(true);
+    expect(obj.mngr.state).toBe(obj.mngr.NEW);
+    $httpBackend.expect('POST', '/controllers', {
+      title: "DefaultTitle",
+      devices: ref,
+      enabled: true
+    }).respond(model({title: "DefaultTitle", devices: ref}));
+    obj.mngr.save();
+    $httpBackend.flush();
 
-});
+    $httpBackend.expect('GET', '/controllers').respond([model()]);
+    obj = collection.find();
+    $httpBackend.flush();
+    expect(obj[0].enabled).toBe(true);
+    //expect(obj).toBeDefined();
+    //expect(obj_copy).not.toBe(obj);
+    //expect(obj.mngr).toBeDefined();
+    //expect(obj_copy.mngr).toBeUndefined();
+
+  });
+
+
+})
+;
 describe('Rest custom creation', function () {
   'use strict';
   var $httpBackend, RestRepository;
@@ -159,7 +199,7 @@ describe('Rest custom creation', function () {
         return {1: 'activated', 2: 'superNew'}[this.licenseType] || 'This is a prop';
       }
     });
-    repo = RestRepository.create(userSchema({ inherit: ControllerModel }));
+    repo = RestRepository.create(userSchema({inherit: ControllerModel}));
     $httpBackend.expect('GET', '/controllers/12').respond(model());
     obj = repo.find(12);
     $httpBackend.flush();
@@ -186,11 +226,12 @@ describe('Rest custom creation', function () {
   });
   it('should modify first letter in property from uppercase to lowercase', function () {
     var obj, repo, model;
-    repo = RestRepository.create(userSchema({propertyModifier: function (prop, name) {
-      if (!prop.remoteProperty) {
-        prop.remoteProperty = name[0].toUpperCase() + name.slice(1);
+    repo = RestRepository.create(userSchema({
+      propertyModifier: function (prop, name) {
+        if (!prop.remoteProperty) {
+          prop.remoteProperty = name[0].toUpperCase() + name.slice(1);
+        }
       }
-    }
     }));
     model = {
       Title: 'Home 12',
@@ -292,7 +333,10 @@ describe('Repository with related objects', function () {
       obj.bills[1].mngr.save();
       $httpBackend.flush();
       obj2.bills[0].name = "name13";
-      $httpBackend.expect('PUT', 'http://api.site.com:8080/v1/controllers/13/bills/1?param=-1', {"id": 1, "name": "name13"})
+      $httpBackend.expect('PUT', 'http://api.site.com:8080/v1/controllers/13/bills/1?param=-1', {
+        "id": 1,
+        "name": "name13"
+      })
         .respond({"id": 1, "name": "nameUpd"});
       obj2.bills[0].mngr.save({param: -1});
       $httpBackend.flush();

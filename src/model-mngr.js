@@ -10,7 +10,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
 
   function isValidDottedPath(path) {
     return (path !== null && path !== '' && path !== 'hasOwnProperty' &&
-      MEMBER_NAME_REGEX.test('.' + path));
+    MEMBER_NAME_REGEX.test('.' + path));
   }
 
   function lookupDottedPath(obj, path) {
@@ -105,13 +105,28 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
     this.remoteFlag = true;
     this.modifyFlag = false;
     this.changedProperties = {};
-    this.originalData = data;
   };
+
+  sunRestModelManager.prototype.setDefaults = function () {
+    this.populating = true;
+    _.forEach(this.schema.properties, function (prop, prop_name) {
+      var default_value = prop['default'];
+      if (default_value !== undefined) {
+        if (_.isFunction(default_value)) {
+          default_value = new default_value();
+        }
+        this.model[prop_name] = default_value;
+      }
+    }, this);
+    this.populating = false;
+  };
+
   sunRestModelManager.prototype.reset = function () {
     var saveRemoteFlag = this.remoteFlag;
     this.populate(this.originalData);
     this.remoteFlag = saveRemoteFlag;
   };
+
   sunRestModelManager.prototype.toJSON = function () {
     var returnData = {}, value;
     _.forEach(this.schema.properties, function (property, key) {
@@ -135,11 +150,18 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
         normalizedKey = (isOutgoing ? remoteProperty : name),
         noneNormalizedKey = (isOutgoing ? name : remoteProperty);
 
-      normalizedData[normalizedKey] = data[noneNormalizedKey] || data[name];
+      if (data.hasOwnProperty(noneNormalizedKey)) {
+        normalizedData[normalizedKey] = data[noneNormalizedKey];
+      }
+      else if (data.hasOwnProperty(name))
+      {
+        normalizedData[normalizedKey] = data[name];
+      }
     });
 
     return normalizedData;
   };
+
   sunRestModelManager.prototype.extractParams = function (data, actionParams) {
     var ids = {};
     actionParams = angular.extend({}, this.schema.paramDefaults, actionParams);
@@ -148,11 +170,12 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
         value = value();
       }
       ids[key] = value &&
-        value.charAt &&
-        value.charAt(0) === '@' ? lookupDottedPath(data, value.substr(1)) : value;
+      value.charAt &&
+      value.charAt(0) === '@' ? lookupDottedPath(data, value.substr(1)) : value;
     });
     return ids;
   };
+
   sunRestModelManager.prototype.save = function (params, modifyLocal) {
     var promise,
       mngr = this,
@@ -171,10 +194,12 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
     }
     return promise;
   };
+
   sunRestModelManager.prototype.remove = function (params) {
     params = angular.extend({}, this.schema.paramDefaults.remove, params);
     return this.simpleRequest('DELETE', params, this.model);
   };
+
   sunRestModelManager.prototype.objectRequest = function (method, params, data) {
     var mngr = this;
 
