@@ -115,6 +115,9 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
         if (_.isFunction(default_value)) {
           default_value = new default_value();
         }
+        else {
+          default_value = _.cloneDeep(default_value);
+        }
         this.model[prop_name] = default_value;
       }
     }, this);
@@ -153,8 +156,7 @@ sunRest.factory('sunRestModelManager', function ($http, $q, $injector, sunUtils,
       if (data.hasOwnProperty(noneNormalizedKey)) {
         normalizedData[normalizedKey] = data[noneNormalizedKey];
       }
-      else if (data.hasOwnProperty(name))
-      {
+      else if (data.hasOwnProperty(name)) {
         normalizedData[normalizedKey] = data[name];
       }
     });

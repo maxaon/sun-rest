@@ -826,6 +826,8 @@
           if (default_value !== undefined) {
             if (_.isFunction(default_value)) {
               default_value = new default_value();
+            } else {
+              default_value = _.cloneDeep(default_value);
             }
             this.model[prop_name] = default_value;
           }

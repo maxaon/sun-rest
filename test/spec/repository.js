@@ -167,11 +167,30 @@ describe('Rest creation', function () {
     obj = collection.find();
     $httpBackend.flush();
     expect(obj[0].enabled).toBe(true);
-    //expect(obj).toBeDefined();
-    //expect(obj_copy).not.toBe(obj);
-    //expect(obj.mngr).toBeDefined();
-    //expect(obj_copy.mngr).toBeUndefined();
-
+  });
+  it('should deep copy default value', function () {
+    var ref = {
+      outer: {
+        inner: {
+          hidden: "hidden"
+        }
+      }
+    };
+    var collection = RestRepository.create(userSchema(
+        {
+          properties: {
+            toCopy: {
+              "default": ref
+            }
+          }
+        }
+      )
+    );
+    var obj = collection.create();
+    expect(obj.toCopy).not.toBe(ref);
+    expect(obj.toCopy.outer.inner.hidden).toBe('hidden');
+    ref.outer.inner.newProp = "newProp";
+    expect(obj.toCopy.outer.inner.hasOwnProperty("newProp")).toBeFalsy();
   });
 
 
