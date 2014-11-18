@@ -40,13 +40,14 @@ describe('Test BaseModel creation', function () {
         }
       }
     });
-    inst = new NewModel({choices: 1});
+    inst = new NewModel({choices: 1, foreign: 2});
     expect(inst.__choices).toBe(1);
     expect(inst._choices).toBe(1);
     expect(inst.choices).toBe('one');
     inst.choices = 2;
     expect(inst._choices).toBe(2);
     expect(inst.choices).toBe('not one');
+    expect('foreign' in inst).toBeFalsy();
   });
   it('should correctly convert to JSON', function () {
     var inst, Model;
@@ -78,15 +79,15 @@ describe('Test BaseModel creation', function () {
     NewModel = modelFactory({
       properties: {
         password: {
-          toJson  : function (value) {
+          toJson: function (value) {
             return 'JSON:' + value;
           },
           toNative: function (value) {
             return 'NATIVE:' + value;
           }
         },
-        date    : {
-          toJson  : function (value) {
+        date: {
+          toJson: function (value) {
             return value.toJSON();
           },
           toNative: function (value) {

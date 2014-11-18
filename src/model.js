@@ -18,10 +18,15 @@ sunRest.factory('sunRestBaseModel', function () {
       value: new this.mngrClass(this),
       enumerable: false
     });
-    this.mngr.setDefaults()
+    this.mngr.setDefaults();
 
     if (!_.isEmpty(data)) {
-      _.extend(this, data);
+      var model = this;
+      _.each(this.schema.properties, function (prop, name) {
+        if (name in data) {
+          model[name] = data[name];
+        }
+      });
     }
   };
 
